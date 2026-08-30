@@ -1,0 +1,42 @@
+app/globals.css
+  s_c5cc5ad7c51856::t_e6484414162c18 34-38,202
+README.md
+  s_c5cc5ad7c51856::t_79d78dd7ea6ac8 3,15,45,54
+docs/architecture.md
+  s_c5cc5ad7c51856::t_e7401bd36af4fd 5,18-19,21
+  s_c5cc5ad7c51856::t_79d78dd7ea6ac8 15-17
+docs/product.md
+  s_c5cc5ad7c51856::t_79d78dd7ea6ac8 17,265-266
+tests/rendered-html.test.mjs
+  s_c5cc5ad7c51856::t_e6484414162c18 23
+  s_c5cc5ad7c51856::t_79d78dd7ea6ac8 22
+scripts/ws-smoke.mjs
+  s_c5cc5ad7c51856::t_006cd9803fa976 2,4,11,14-30,34,36-38,42-66,68
+lib/game.ts
+  s_c5cc5ad7c51856::t_e6484414162c18 220-278
+app/page.tsx
+  s_c5cc5ad7c51856::t_e6484414162c18 178,183,298,303,359-362
+worker/api.ts
+  s_c5cc5ad7c51856::t_1bc3c573549796 63-67,167,177-178,181-182,255-262
+  s_c5cc5ad7c51856::t_e6484414162c18 5,82,159,171-175,189-224,294,309,445,456-459
+  s_c5cc5ad7c51856::t_059531bf133ed9 225-226
+tests/game.test.mjs
+  s_c5cc5ad7c51856::t_e6484414162c18 3,75-86
+  s_c5cc5ad7c51856::t_11a77fc6d6158f 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "26946c80e253383307430be960ff17cc42b8e78e",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
