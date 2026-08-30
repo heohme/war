@@ -13,6 +13,7 @@ type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
 type RoomCredential = { roomId: string; side: Side; token: string; playerId: string };
 type ActivityLogEntry = { at: number; type: string; detail: string };
 type FeedbackStatus = "idle" | "submitting" | "success" | "error";
+type WeaponGroup = "melee" | "ranged";
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
 const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", dagger: "匕", axe: "斧", spear: "枪", bow: "弓", staff: "杖" };
@@ -33,6 +34,16 @@ const WEAPON_TRAITS: Record<WeaponId, string> = {
   staff: "法术 / 爆裂",
 };
 const WEAPON_RANGE_SHORT: Record<WeaponId, string> = { sword: "0～2格", dagger: "0～1格", axe: "扇形1格", spear: "0～3格", bow: "2～4格", staff: "2格爆裂" };
+const WEAPON_GROUPS: Record<WeaponGroup, WeaponId[]> = {
+  melee: ["sword", "dagger", "axe", "spear"],
+  ranged: ["bow", "staff"],
+};
+const GUIDE_STEPS = [
+  { code: "CORE LOOP", title: "秘密规划，依次揭晓", copy: "双方在 30 秒内各自完成撤、搜、打。确认前对手看不到你的选择，双方完成后才会进入战斗回放。", kind: "loop" },
+  { code: "REMOVE", title: "先撤：改变战场", copy: "只能撤除外缘、无人占据且不会切断地图的地块。若双方选择同一块，后结算的一方本次机会作废。", kind: "remove" },
+  { code: "MOVE", title: "再搜：预测路线", copy: "每回合最多移动两格。依次点击相邻地块规划路线；如果路线中的砖先被撤掉，你会停在缺口前。", kind: "move" },
+  { code: "ATTACK", title: "最后打：武器与骰子", copy: "先选武器，再点击地图上的方向。金色格是攻击范围；掷骰达到武器门槛才会造成图中标注的伤害。", kind: "attack" },
+] as const;
 const RANGE_DIAGRAM_CELLS = [
   { id: "0,-1", x: 0.5, y: 0 },
   { id: "2,-1", x: 2.5, y: 0 },
@@ -244,6 +255,9 @@ export default function Home() {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>("idle");
   const [feedbackLogs, setFeedbackLogs] = useState<ActivityLogEntry[]>([]);
   const [restartOpen, setRestartOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
+  const [weaponGroup, setWeaponGroup] = useState<WeaponGroup>("melee");
   const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -304,6 +318,12 @@ export default function Home() {
       if (event.code !== 1000 && socketRef.current === socket) setNotice("连接已中断，点击可重新连接");
     };
   }, [recordActivity, resetDraft]);
+
+  useEffect(() => {
+    if (localStorage.getItem("multiwar-guide-v1") || sessionStorage.getItem("multiwar-room")) return;
+    const guideTimer = setTimeout(() => setGuideOpen(true), 0);
+    return () => clearTimeout(guideTimer);
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("multiwar-room");
@@ -423,6 +443,16 @@ export default function Home() {
     setFeedbackStatus("idle"); setFeedbackOpen(true);
   };
 
+  const openGuide = () => {
+    setGuideStep(0); setGuideOpen(true);
+    recordActivity("引导", "打开新手战术简报");
+  };
+
+  const closeGuide = () => {
+    localStorage.setItem("multiwar-guide-v1", "complete");
+    setGuideOpen(false);
+  };
+
   const submitFeedback = async () => {
     const description = feedbackDescription.trim();
     if (!description || feedbackStatus === "submitting") return;
@@ -451,7 +481,8 @@ export default function Home() {
   };
 
   const commonOverlay = <>
-    <GlobalActions onRestart={() => setRestartOpen(true)} onFeedback={openFeedback} />
+    <GlobalActions onRestart={() => setRestartOpen(true)} onGuide={openGuide} onFeedback={openFeedback} />
+    {guideOpen && <GuideSheet step={guideStep} onStep={setGuideStep} onClose={closeGuide} />}
     {feedbackOpen && <FeedbackSheet description={feedbackDescription} status={feedbackStatus}
       logs={feedbackLogs} onDescription={setFeedbackDescription} onSubmit={submitFeedback}
       onClose={() => setFeedbackOpen(false)} />}
@@ -473,8 +504,18 @@ export default function Home() {
         <header className="match-card-head"><div><small>战前整备</small><strong>建立你的作战配置</strong></div><span>READY</span></header>
         <label className="name-field"><span>你的代号</span><input aria-label="你的代号" placeholder="旅行者" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
         <div className="loadout-title"><span>武器库 <b>{weapons.length}/2</b></span><small>点击装备 · 长按看范围图</small></div>
+        <div className="weapon-groups" role="tablist" aria-label="武器类型">
+          {(["melee", "ranged"] as WeaponGroup[]).map((group) => {
+            const equipped = WEAPON_GROUPS[group].filter((weapon) => weapons.includes(weapon)).length;
+            return <button key={group} type="button" role="tab" aria-selected={weaponGroup === group}
+              className={weaponGroup === group ? "active" : ""} onClick={() => setWeaponGroup(group)}>
+              <span>{group === "melee" ? "近战" : "远程"}<small>{WEAPON_GROUPS[group].length} 件</small></span>
+              <b>{equipped ? `${equipped} 已装备` : "未装备"}</b>
+            </button>;
+          })}
+        </div>
         <div className="weapon-grid">
-          {(Object.keys(WEAPONS) as WeaponId[]).map((weapon) => (
+          {WEAPON_GROUPS[weaponGroup].map((weapon) => (
             <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
               onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
               onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
@@ -561,11 +602,42 @@ export default function Home() {
   );
 }
 
-function GlobalActions({ onRestart, onFeedback }: { onRestart: () => void; onFeedback: () => void }) {
+function GlobalActions({ onRestart, onGuide, onFeedback }: { onRestart: () => void; onGuide: () => void; onFeedback: () => void }) {
   return <nav className="global-actions" aria-label="全局操作">
     <button type="button" onClick={onRestart} aria-label="重新开始" title="重新开始"><span aria-hidden="true">↻</span></button>
+    <button type="button" onClick={onGuide} aria-label="新手引导" title="新手引导"><span aria-hidden="true">✦</span></button>
     <button type="button" onClick={onFeedback} aria-label="问题反馈" title="问题反馈"><span aria-hidden="true">?</span></button>
   </nav>;
+}
+
+function GuideSheet({ step, onStep, onClose }: { step: number; onStep: (step: number) => void; onClose: () => void }) {
+  const item = GUIDE_STEPS[step];
+  const last = step === GUIDE_STEPS.length - 1;
+  return <div className="sheet-backdrop guide-backdrop">
+    <section className="guide-sheet" aria-modal="true" role="dialog" aria-labelledby="guide-title">
+      <button className="sheet-close" type="button" onClick={onClose} aria-label="关闭新手引导">×</button>
+      <div className={`guide-visual guide-${item.kind}`}>
+        <div className="guide-visual-label"><span>TACTICAL BRIEFING</span><b>0{step + 1}</b></div>
+        <GuideVisual kind={item.kind} />
+      </div>
+      <div className="guide-copy">
+        <small>{item.code} · 0{step + 1}/0{GUIDE_STEPS.length}</small>
+        <h2 id="guide-title">{item.title}</h2>
+        <p>{item.copy}</p>
+        <div className="guide-dots" aria-label="引导进度">{GUIDE_STEPS.map((guide, index) => <button key={guide.code} type="button" aria-label={`第 ${index + 1} 页`} className={index === step ? "active" : ""} onClick={() => onStep(index)} />)}</div>
+        <div className="guide-actions">
+          <button type="button" className="guide-skip" onClick={onClose}>{step === 0 ? "跳过引导" : "结束引导"}</button>
+          <button type="button" className="guide-next" onClick={() => last ? onClose() : onStep(step + 1)}>{last ? "开始作战" : "下一步"}<span>→</span></button>
+        </div>
+      </div>
+    </section>
+  </div>;
+}
+
+function GuideVisual({ kind }: { kind: (typeof GUIDE_STEPS)[number]["kind"] }) {
+  if (kind === "loop") return <div className="guide-phase-preview">{[["撤", "改变地形"], ["搜", "规划移动"], ["打", "武器攻击"]].map(([name, detail], index) => <span key={name}><i>0{index + 1}</i><b>{name}</b><small>{detail}</small></span>)}</div>;
+  if (kind === "attack") return <div className="guide-attack-preview"><img src={WEAPON_ART.staff} alt="法杖" /><span className="guide-attack-line">1 <i>→</i></span><b><i>4</i><small>D6 命中</small></b><div className="guide-blast"><i>1</i><i>2</i><i>1</i></div></div>;
+  return <div className={`guide-mini-board ${kind}`}>{Array.from({ length: 7 }, (_, index) => <span key={index} className={index === (kind === "remove" ? 5 : 3) ? "focus" : index < 2 && kind === "move" ? "path" : ""}><i>{kind === "remove" && index === 5 ? "×" : kind === "move" && index === 3 ? "我" : kind === "move" && index < 2 ? index + 1 : ""}</i></span>)}</div>;
 }
 
 function FeedbackSheet({ description, status, logs, onDescription, onSubmit, onClose }: {
