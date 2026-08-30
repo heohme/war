@@ -39,11 +39,14 @@ const WEAPON_GROUPS: Record<WeaponGroup, WeaponId[]> = {
   ranged: ["bow", "staff"],
 };
 const GUIDE_STEPS = [
-  { code: "CORE LOOP", title: "秘密规划，依次揭晓", copy: "双方在 30 秒内各自完成撤、搜、打。确认前对手看不到你的选择，双方完成后才会进入战斗回放。", kind: "loop" },
-  { code: "REMOVE", title: "先撤：改变战场", copy: "只能撤除外缘、无人占据且不会切断地图的地块。若双方选择同一块，后结算的一方本次机会作废。", kind: "remove" },
-  { code: "MOVE", title: "再搜：预测路线", copy: "每回合最多移动两格。依次点击相邻地块规划路线；如果路线中的砖先被撤掉，你会停在缺口前。", kind: "move" },
-  { code: "ATTACK", title: "最后打：武器与骰子", copy: "先选武器，再点击地图上的方向。金色格是攻击范围；掷骰达到武器门槛才会造成图中标注的伤害。", kind: "attack" },
+  { code: "CORE LOOP", title: "秘密规划，依次揭晓", copy: "双方在 30 秒内各自完成撤、搜、打。确认前对手看不到你的选择，双方完成后才会进入战斗回放。", art: "/assets/guide-loop.webp" },
+  { code: "REMOVE", title: "先撤：改变战场", copy: "只能撤除外缘、无人占据且不会切断地图的地块。若双方选择同一块，后结算的一方本次机会作废。", art: "/assets/guide-remove.webp" },
+  { code: "MOVE", title: "再搜：预测路线", copy: "每回合最多移动两格。依次点击相邻地块规划路线；如果路线中的砖先被撤掉，你会停在缺口前。", art: "/assets/guide-move.webp" },
+  { code: "ATTACK", title: "最后打：武器与骰子", copy: "先选武器，再点击地图上的方向。金色格是攻击范围；掷骰达到武器门槛才会造成图中标注的伤害。", art: "/assets/guide-attack.webp" },
 ] as const;
+const DIE_PIPS: Record<number, number[]> = {
+  1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
+};
 const RANGE_DIAGRAM_CELLS = [
   { id: "0,-1", x: 0.5, y: 0 },
   { id: "2,-1", x: 2.5, y: 0 },
@@ -115,7 +118,7 @@ function phaseOf(event?: ResolutionEvent) {
 
 function replayDelay(event?: ResolutionEvent) {
   if (!event) return 650;
-  if (event.type === "die") return 1_250;
+  if (event.type === "die") return 1_650;
   if (event.type === "damage" || event.type === "remove") return 1_050;
   if (event.type === "round_end") return 850;
   return 900;
@@ -247,6 +250,7 @@ export default function Home() {
   const [direction, setDirection] = useState(1);
   const [events, setEvents] = useState<ResolutionEvent[]>([]);
   const [eventIndex, setEventIndex] = useState(-1);
+  const [settledDieKey, setSettledDieKey] = useState("");
   const [resolutionAfter, setResolutionAfter] = useState<GameState | null>(null);
   const [notice, setNotice] = useState("");
   const [opponentConnected, setOpponentConnected] = useState(true);
@@ -257,7 +261,6 @@ export default function Home() {
   const [restartOpen, setRestartOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
-  const [weaponGroup, setWeaponGroup] = useState<WeaponGroup>("melee");
   const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -320,7 +323,7 @@ export default function Home() {
   }, [recordActivity, resetDraft]);
 
   useEffect(() => {
-    if (localStorage.getItem("multiwar-guide-v1") || sessionStorage.getItem("multiwar-room")) return;
+    if (localStorage.getItem("multiwar-guide-v2") || sessionStorage.getItem("multiwar-room")) return;
     const guideTimer = setTimeout(() => setGuideOpen(true), 0);
     return () => clearTimeout(guideTimer);
   }, []);
@@ -449,7 +452,7 @@ export default function Home() {
   };
 
   const closeGuide = () => {
-    localStorage.setItem("multiwar-guide-v1", "complete");
+    localStorage.setItem("multiwar-guide-v2", "complete");
     setGuideOpen(false);
   };
 
@@ -504,26 +507,23 @@ export default function Home() {
         <header className="match-card-head"><div><small>战前整备</small><strong>建立你的作战配置</strong></div><span>READY</span></header>
         <label className="name-field"><span>你的代号</span><input aria-label="你的代号" placeholder="旅行者" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
         <div className="loadout-title"><span>武器库 <b>{weapons.length}/2</b></span><small>点击装备 · 长按看范围图</small></div>
-        <div className="weapon-groups" role="tablist" aria-label="武器类型">
+        <div className="weapon-arsenal" aria-label="全部武器">
           {(["melee", "ranged"] as WeaponGroup[]).map((group) => {
             const equipped = WEAPON_GROUPS[group].filter((weapon) => weapons.includes(weapon)).length;
-            return <button key={group} type="button" role="tab" aria-selected={weaponGroup === group}
-              className={weaponGroup === group ? "active" : ""} onClick={() => setWeaponGroup(group)}>
-              <span>{group === "melee" ? "近战" : "远程"}<small>{WEAPON_GROUPS[group].length} 件</small></span>
-              <b>{equipped ? `${equipped} 已装备` : "未装备"}</b>
-            </button>;
+            return <section className={`weapon-column ${group}`} key={group} aria-label={group === "melee" ? "近战武器" : "远程武器"}>
+              <header><span>{group === "melee" ? "近战兵装" : "远程兵装"}<small>{WEAPON_GROUPS[group].length} 件</small></span><b>{equipped ? `${equipped} 已装备` : "未装备"}</b></header>
+              <div className="weapon-stack">{WEAPON_GROUPS[group].map((weapon) => (
+                <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
+                  onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
+                  onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
+                  <span className="weapon-art"><img src={WEAPON_ART[weapon]} alt="" draggable={false} /><i>{WEAPON_ICONS[weapon]}</i></span>
+                  <span className="weapon-card-copy"><strong>{WEAPONS[weapon].name}</strong><small>{WEAPONS[weapon].role} · {WEAPON_TRAITS[weapon]}</small></span>
+                  <span className="weapon-card-desc">{WEAPONS[weapon].description}</span>
+                  <span className="weapon-card-stats"><b>范围 {WEAPON_RANGE_SHORT[weapon]}</b><em>伤害 {WEAPONS[weapon].damageLabel}</em><small>{Math.round(weaponHitChance(weapon) * 100)}% 命中</small></span>
+                </button>
+              ))}</div>
+            </section>;
           })}
-        </div>
-        <div className="weapon-grid">
-          {WEAPON_GROUPS[weaponGroup].map((weapon) => (
-            <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
-              onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
-              onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
-              <span className="weapon-art"><img src={WEAPON_ART[weapon]} alt="" draggable={false} /><i>{WEAPON_ICONS[weapon]}</i></span>
-              <span className="weapon-card-copy"><strong>{WEAPONS[weapon].name}</strong><small>{WEAPON_TRAITS[weapon]}</small></span>
-              <span className="weapon-card-stats"><b>{WEAPON_RANGE_SHORT[weapon]}</b><em>{Math.round(weaponHitChance(weapon) * 100)}% 命中</em></span>
-            </button>
-          ))}
         </div>
         <div className="mode-actions">
           <button type="button" className="primary-action" onClick={() => match("pvp")}>在线匹配<span>1V1 · 实时对战</span></button>
@@ -545,6 +545,7 @@ export default function Home() {
   );
 
   const activeEvent = eventIndex >= 0 ? events[eventIndex] : undefined;
+  const activeDieKey = activeEvent?.type === "die" ? `${eventIndex}-${activeEvent.roll}` : "";
   const activePhase = phaseOf(activeEvent);
   const activePhaseIndex = ["撤", "搜", "打", "终"].indexOf(activePhase);
   const recentEvents = events.slice(Math.max(0, eventIndex - 2), eventIndex + 1);
@@ -585,9 +586,12 @@ export default function Home() {
         <div className="resolution-kicker"><span>战斗回放</span><b>{Math.max(0, eventIndex + 1)} / {events.length}</b></div>
         <div className="resolution-track">{["撤", "搜", "打"].map((label, index) => <span key={label} className={index < activePhaseIndex ? "done" : index === activePhaseIndex ? "active" : ""}><i>{index < activePhaseIndex ? "✓" : label}</i><small>{label === "撤" ? "地形" : label === "搜" ? "走位" : "交锋"}</small></span>)}</div>
         <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span>{activeEvent?.weapon && <img src={WEAPON_ART[activeEvent.weapon]} alt={WEAPONS[activeEvent.weapon].name} />}</div>
-        {activeEvent?.type === "die" && <div className={`big-die ${activeEvent.hit ? "hit" : "miss"}`}><span>{activeEvent.roll}</span><small>需要 {activeEvent.threshold}+</small></div>}
-        <h2>{eventText(activeEvent)}</h2>
-        <div className="battle-log">{recentEvents.map((event, index) => <div key={`${eventIndex}-${index}`} className={index === recentEvents.length - 1 ? "current" : ""}><i>{phaseOf(event)}</i><span>{eventText(event)}</span></div>)}</div>
+        {activeEvent?.type === "die" ? <AnimatedDie key={activeDieKey} event={activeEvent} onSettled={() => setSettledDieKey(activeDieKey)} /> : <h2>{eventText(activeEvent)}</h2>}
+        <div className="battle-log">{recentEvents.map((event, index) => {
+          const current = index === recentEvents.length - 1;
+          const rolling = current && event.type === "die" && settledDieKey !== activeDieKey;
+          return <div key={`${eventIndex}-${index}`} className={current ? "current" : ""}><i>{phaseOf(event)}</i><span>{rolling ? `${sideName(event.side)}正在掷骰…` : eventText(event)}</span></div>;
+        })}</div>
         <div className="event-progress">{events.map((_, index) => <i key={index} className={index <= eventIndex ? "active" : ""} />)}</div>
         <p>只播放双方的公开结算，播放完成后自动进入下一回合</p>
       </aside>}
@@ -616,9 +620,9 @@ function GuideSheet({ step, onStep, onClose }: { step: number; onStep: (step: nu
   return <div className="sheet-backdrop guide-backdrop">
     <section className="guide-sheet" aria-modal="true" role="dialog" aria-labelledby="guide-title">
       <button className="sheet-close" type="button" onClick={onClose} aria-label="关闭新手引导">×</button>
-      <div className={`guide-visual guide-${item.kind}`}>
+      <div className="guide-visual">
         <div className="guide-visual-label"><span>TACTICAL BRIEFING</span><b>0{step + 1}</b></div>
-        <GuideVisual kind={item.kind} />
+        <img src={item.art} alt="" draggable={false} />
       </div>
       <div className="guide-copy">
         <small>{item.code} · 0{step + 1}/0{GUIDE_STEPS.length}</small>
@@ -634,10 +638,31 @@ function GuideSheet({ step, onStep, onClose }: { step: number; onStep: (step: nu
   </div>;
 }
 
-function GuideVisual({ kind }: { kind: (typeof GUIDE_STEPS)[number]["kind"] }) {
-  if (kind === "loop") return <div className="guide-phase-preview">{[["撤", "改变地形"], ["搜", "规划移动"], ["打", "武器攻击"]].map(([name, detail], index) => <span key={name}><i>0{index + 1}</i><b>{name}</b><small>{detail}</small></span>)}</div>;
-  if (kind === "attack") return <div className="guide-attack-preview"><img src={WEAPON_ART.staff} alt="法杖" /><span className="guide-attack-line">1 <i>→</i></span><b><i>4</i><small>D6 命中</small></b><div className="guide-blast"><i>1</i><i>2</i><i>1</i></div></div>;
-  return <div className={`guide-mini-board ${kind}`}>{Array.from({ length: 7 }, (_, index) => <span key={index} className={index === (kind === "remove" ? 5 : 3) ? "focus" : index < 2 && kind === "move" ? "path" : ""}><i>{kind === "remove" && index === 5 ? "×" : kind === "move" && index === 3 ? "我" : kind === "move" && index < 2 ? index + 1 : ""}</i></span>)}</div>;
+function AnimatedDie({ event, onSettled }: { event: ResolutionEvent; onSettled: () => void }) {
+  const roll = event.roll || 1;
+  const [face, setFace] = useState(((roll + 2) % 6) + 1);
+  const [settled, setSettled] = useState(false);
+  const onSettledRef = useRef(onSettled);
+  useEffect(() => { onSettledRef.current = onSettled; }, [onSettled]);
+  useEffect(() => {
+    let tick = 0;
+    const interval = setInterval(() => {
+      tick += 1;
+      setFace(((roll + tick * 5) % 6) + 1);
+    }, 80);
+    const settleTimer = setTimeout(() => {
+      clearInterval(interval); setFace(roll); setSettled(true); onSettledRef.current();
+    }, 720);
+    return () => { clearInterval(interval); clearTimeout(settleTimer); };
+  }, [roll]);
+  return <div className={`die-roll ${settled ? "settled" : "rolling"} ${event.hit ? "hit" : "miss"}`}>
+    <div className={`big-die ${settled ? event.hit ? "hit" : "miss" : ""}`}>
+      <div className="die-face" aria-label={settled ? `骰子 ${roll} 点` : "骰子滚动中"}>{Array.from({ length: 9 }, (_, index) => <i key={index} className={DIE_PIPS[face].includes(index) ? "show" : ""} />)}</div>
+      <small>{settled ? `掷出 ${roll} · 需要 ${event.threshold}+` : "骰子滚动中"}</small>
+    </div>
+    <span className={`die-outcome ${settled ? "visible" : ""}`}>{event.hit ? "命中" : "落空"}</span>
+    <h2>{settled ? eventText(event) : `${sideName(event.side)}掷出骰子，等待结果…`}</h2>
+  </div>;
 }
 
 function FeedbackSheet({ description, status, logs, onDescription, onSubmit, onClose }: {
