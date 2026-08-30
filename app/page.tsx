@@ -15,28 +15,34 @@ type ActivityLogEntry = { at: number; type: string; detail: string };
 type FeedbackStatus = "idle" | "submitting" | "success" | "error";
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
-const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", axe: "斧", spear: "枪", bow: "弓" };
+const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", dagger: "匕", axe: "斧", spear: "枪", bow: "弓", staff: "杖" };
 const WEAPON_ART: Record<WeaponId, string> = {
   sword: "/assets/weapon-sword.webp",
+  dagger: "/assets/weapon-dagger.webp",
   axe: "/assets/weapon-axe.webp",
   spear: "/assets/weapon-spear.webp",
   bow: "/assets/weapon-bow.webp",
+  staff: "/assets/weapon-staff.webp",
 };
 const WEAPON_TRAITS: Record<WeaponId, string> = {
   sword: "均衡 / 近战",
+  dagger: "贴身 / 爆发",
   axe: "爆发 / 扇形",
   spear: "突刺 / 直线",
   bow: "远射 / 压制",
+  staff: "法术 / 爆裂",
 };
-const WEAPON_RANGE_SHORT: Record<WeaponId, string> = { sword: "0～2格", axe: "扇形1格", spear: "0～3格", bow: "2～4格" };
+const WEAPON_RANGE_SHORT: Record<WeaponId, string> = { sword: "0～2格", dagger: "0～1格", axe: "扇形1格", spear: "0～3格", bow: "2～4格", staff: "2格爆裂" };
 const RANGE_DIAGRAM_CELLS = [
   { id: "0,-1", x: 0.5, y: 0 },
+  { id: "2,-1", x: 2.5, y: 0 },
   { id: "0,0", x: 0, y: 1 },
   { id: "1,0", x: 1, y: 1 },
   { id: "2,0", x: 2, y: 1 },
   { id: "3,0", x: 3, y: 1 },
   { id: "4,0", x: 4, y: 1 },
   { id: "0,1", x: 0.5, y: 2 },
+  { id: "2,1", x: 2.5, y: 2 },
 ] as const;
 const EMPTY_LOCKS: Locks = {
   cyan: { remove: false, move: false, attack: false },
@@ -607,7 +613,7 @@ function WeaponSheet({ weapon, onClose }: { weapon: WeaponId; onClose: () => voi
       <div className="weapon-stat"><span>命中条件</span><strong>D6 ≥ {item.threshold}</strong></div>
       <div className="weapon-stat"><span>命中率</span><strong>{Math.round(weaponHitChance(weapon) * 100)}%</strong></div>
       <div className="weapon-stat"><span>范围 / 伤害</span><strong>{item.rangeLabel} · {item.damageLabel}</strong></div>
-      <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : "远程 · 可跨缺口"}</strong></div>
+      <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : weapon === "staff" ? "范围 · 可跨缺口" : "远程 · 可跨缺口"}</strong></div>
     </div></div>
   </section></div>;
 }

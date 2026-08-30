@@ -405,8 +405,10 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .season-mark,.battle-features { display:none; }
   .match-card { padding:.55rem .75rem; }
   .match-card-head { display:none; }
+  .weapon-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .weapon-card { min-height:3.45rem; padding:.35rem .45rem .3rem 3.3rem; }
   .weapon-art { width:3.2rem; }
+  .weapon-card-copy small { display:none; }
   .weapon-card-stats { margin-top:.22rem; padding-top:.2rem; }
   .weapon-sheet { width:min(40rem,92vw); }
   .weapon-sheet-hero { min-height:6rem; grid-template-columns:7rem 1fr; }

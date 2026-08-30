@@ -1,5 +1,5 @@
 export type Side = "cyan" | "red";
-export type WeaponId = "sword" | "axe" | "spear" | "bow";
+export type WeaponId = "sword" | "dagger" | "axe" | "spear" | "bow" | "staff";
 
 export interface Coord {
   q: number;
@@ -79,6 +79,8 @@ export interface AttackBand {
   distance: number;
   damage: number;
   directionOffset?: -1 | 0 | 1;
+  /** Move one adjacent cell around the impact point to form a small blast. */
+  impactOffset?: -1 | 1;
 }
 
 export interface AttackCell {
@@ -101,6 +103,20 @@ export const WEAPONS: Record<WeaponId, WeaponDefinition> = {
     pattern: [
       { distance: 1, damage: 2 },
       { distance: 2, damage: 1 },
+    ],
+  },
+  dagger: {
+    id: "dagger",
+    name: "匕首",
+    threshold: 2,
+    description: "同格 3 伤，相邻 1 伤；贴身命中时拥有最高爆发",
+    melee: true,
+    sameCellDamage: 3,
+    rangeLabel: "同格 / 相邻 1 格",
+    damageLabel: "同格 3 / 相邻 1",
+    role: "贴身终结",
+    pattern: [
+      { distance: 1, damage: 1 },
     ],
   },
   axe: {
@@ -149,6 +165,22 @@ export const WEAPONS: Record<WeaponId, WeaponDefinition> = {
       { distance: 2, damage: 1 },
       { distance: 3, damage: 2 },
       { distance: 4, damage: 2 },
+    ],
+  },
+  staff: {
+    id: "staff",
+    name: "法杖",
+    threshold: 4,
+    description: "瞄准直线第 2 格并爆裂，中心 2 伤、两侧各 1 伤",
+    melee: false,
+    sameCellDamage: 0,
+    rangeLabel: "第 2 格爆裂三格",
+    damageLabel: "中心 2 / 两侧 1",
+    role: "落点覆盖",
+    pattern: [
+      { distance: 2, damage: 1, impactOffset: -1 },
+      { distance: 2, damage: 2 },
+      { distance: 2, damage: 1, impactOffset: 1 },
     ],
   },
 };
@@ -373,15 +405,20 @@ export function weaponAttackCells(
 ): AttackCell[] {
   if (direction < 1 || direction > 6) return [];
   const definition = WEAPONS[weapon];
-  const cells = definition.pattern.map((band) => ({
-    cell: directionCell(
+  const cells = definition.pattern.map((band) => {
+    const impact = directionCell(
       origin,
       wrapDirection(direction + (band.directionOffset ?? 0)),
       band.distance,
-    ),
-    damage: band.damage,
-    direction,
-  }));
+    );
+    return {
+      cell: band.impactOffset
+        ? directionCell(impact, wrapDirection(direction + band.impactOffset))
+        : impact,
+      damage: band.damage,
+      direction,
+    };
+  });
   if (definition.sameCellDamage > 0) {
     cells.push({ cell: origin, damage: definition.sameCellDamage, direction });
   }
@@ -391,7 +428,7 @@ export function weaponAttackCells(
 /** Central ray cells that can be clicked to choose one of the six directions. */
 export function weaponAimCells(weapon: WeaponId, origin: string): AttackCell[] {
   const centralBands = WEAPONS[weapon].pattern.filter(
-    (band) => (band.directionOffset ?? 0) === 0,
+    (band) => (band.directionOffset ?? 0) === 0 && !band.impactOffset,
   );
   return DIRECTIONS.flatMap((_, index) => centralBands.map((band) => ({
     cell: directionCell(origin, index + 1, band.distance),

@@ -240,7 +240,7 @@ export class MatchQueue {
             red: {
               id: `bot-${roomId}`,
               name: "训练机器人",
-              weapons: ["axe", "spear"],
+              weapons: ["dagger", "staff"],
               side: "red",
               token: botToken,
             },

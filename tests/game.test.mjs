@@ -35,21 +35,26 @@ test("both players removing one tile consumes the second chance", () => {
   assert.equal(events.filter((event) => event.type === "remove_failed").length, 1);
 });
 
-test("melee can hit the same cell while bow cannot", () => {
+test("melee can hit the same cell while ranged weapons cannot", () => {
   assert.equal(attackDamage("sword", "0,0", "0,0", 1), 2);
+  assert.equal(attackDamage("dagger", "0,0", "0,0", 1), 3);
   assert.equal(attackDamage("spear", "0,0", "0,0", 1), 1);
   assert.equal(attackDamage("axe", "0,0", "0,0", 1), 1);
   assert.equal(attackDamage("bow", "0,0", "0,0", 1), 0);
+  assert.equal(attackDamage("staff", "0,0", "0,0", 1), 0);
 });
 
 test("weapon patterns expose balanced damage, hit chance, and click targets", () => {
   assert.equal(weaponHitChance("sword"), 5 / 6);
+  assert.equal(weaponHitChance("dagger"), 5 / 6);
   assert.equal(weaponHitChance("axe"), 4 / 6);
   assert.equal(weaponHitChance("spear"), 4 / 6);
   assert.equal(weaponHitChance("bow"), 3 / 6);
+  assert.equal(weaponHitChance("staff"), 3 / 6);
 
   assert.equal(attackDamage("sword", "0,0", "1,0", 1), 2);
   assert.equal(attackDamage("sword", "0,0", "2,0", 1), 1);
+  assert.equal(attackDamage("dagger", "0,0", "1,0", 1), 1);
   assert.equal(attackDamage("spear", "0,0", "1,-2", 2), 2);
   assert.equal(attackDamage("bow", "0,0", "2,0", 1), 1);
   assert.equal(attackDamage("bow", "0,0", "3,0", 1), 2);
@@ -58,7 +63,13 @@ test("weapon patterns expose balanced damage, hit chance, and click targets", ()
   assert.equal(axe.get("1,0"), 2);
   assert.equal(axe.get("0,-1"), 1);
   assert.equal(axe.get("0,1"), 1);
+
+  const staff = new Map(weaponAttackCells("staff", "0,0", 1).map((item) => [item.cell, item.damage]));
+  assert.equal(staff.get("2,0"), 2);
+  assert.equal(staff.get("2,-1"), 1);
+  assert.equal(staff.get("2,1"), 1);
   assert.equal(weaponAimCells("bow", "0,0").filter((item) => item.direction === 1).length, 3);
+  assert.equal(weaponAimCells("staff", "0,0").filter((item) => item.direction === 1).length, 1);
 });
 
 test("initiative kill cancels the defeated player's attack", () => {
@@ -74,7 +85,7 @@ test("initiative kill cancels the defeated player's attack", () => {
 });
 
 test("training bot creates a complete and legal turn plan", () => {
-  const game = createGame(cyan, { ...red, weapons: ["axe", "spear"] }, "cyan");
+  const game = createGame(cyan, { ...red, weapons: ["dagger", "staff"] }, "cyan");
   game.players.cyan.position = "0,0";
   game.players.red.position = "2,0";
   const plan = planBotTurn(game, "red");
