@@ -54,8 +54,8 @@ npm run smoke:ws
 
 仓库需要配置以下 GitHub Actions Secrets：
 
-- `CLOUDFLARE_API_TOKEN`：拥有 Workers Scripts 与 Cloudflare Pages 编辑权限的 API Token；
-- `CLOUDFLARE_ACCOUNT_ID`：Cloudflare Account ID。
+- `CLOUDFLARE_DEPLOY_TOKEN`：拥有 Workers Scripts 与 Cloudflare Pages 编辑权限的 API Token；
+- `CLOUDFLARE_DEPLOY_ACCOUNT_ID`：Cloudflare Account ID。
 
 日常发布只需：
 
