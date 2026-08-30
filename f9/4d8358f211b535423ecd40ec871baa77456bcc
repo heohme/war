@@ -1,0 +1,27 @@
+docs/product.md
+  s_c5cc5ad7c51856::t_f7b7bd4e30c456 180
+app/globals.css
+  s_c5cc5ad7c51856::t_f7b7bd4e30c456 29,182,188-192,195-205,213
+  s_c5cc5ad7c51856::t_b7ab213a673646 193-194
+app/page.tsx
+  s_c5cc5ad7c51856::t_f7b7bd4e30c456 3,16-25,223,330-336,338-344,373,377,379,462,469-488
+  s_c5cc5ad7c51856::t_5dcfad2bd9a859 489
+tests/rendered-html.test.mjs
+  s_c5cc5ad7c51856::t_f7b7bd4e30c456 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f94d8358f211b535423ecd40ec871baa77456bcc",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
