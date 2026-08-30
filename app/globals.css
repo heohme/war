@@ -26,7 +26,7 @@ button,input { font:inherit; } button { color:inherit; }
 .weapon-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.45rem; }
 .weapon-card { position:relative; min-width:0; border:1px solid var(--line); background:#111820; border-radius:.8rem; padding:.65rem .2rem .55rem; display:grid; justify-items:center; gap:.18rem; cursor:pointer; touch-action:manipulation; }
 .weapon-card i { width:2rem; height:2rem; display:grid; place-items:center; border-radius:50%; background:#1d2630; color:#bbc3cb; font-style:normal; font-weight:700; }
-.weapon-card span { font-size:.72rem; } .weapon-card small { color:#78838e; font-size:.63rem; }
+.weapon-card span { font-size:.72rem; } .weapon-card small { color:#78838e; font-size:.56rem; white-space:nowrap; }
 .weapon-card.selected { border-color:var(--gold); background:rgba(233,184,94,.1); }
 .weapon-card.selected::after { content:"✓"; position:absolute; top:.25rem; right:.35rem; color:var(--gold); font-size:.65rem; }
 .primary-action,.confirm-action { width:100%; border:0; cursor:pointer; background:linear-gradient(140deg,#f0c673,#c58b2d); color:#251a09; font-weight:750; border-radius:.9rem; min-height:3.2rem; margin-top:.85rem; display:grid; place-items:center; line-height:1.1; box-shadow:0 .8rem 2rem rgba(199,142,47,.15); }
@@ -179,12 +179,30 @@ button,input { font:inherit; } button { color:inherit; }
 
 .sheet-backdrop { position:fixed; z-index:40; inset:0; display:grid; place-items:center; background:rgba(2,4,7,.72); backdrop-filter:blur(8px); }
 .sheet-dismiss { position:absolute; inset:0; width:100%; height:100%; border:0; background:transparent; }
-.weapon-sheet { position:relative; z-index:1; width:min(23rem,76vw); border:1px solid rgba(233,184,94,.3); border-radius:1.2rem; background:#151c24; padding:1.3rem; text-align:center; box-shadow:0 2rem 6rem #000; }
+.weapon-sheet { position:relative; z-index:1; width:min(25rem,82vw); max-height:92svh; overflow:auto; border:1px solid rgba(233,184,94,.3); border-radius:1.2rem; background:#151c24; padding:1.15rem 1.3rem; text-align:center; box-shadow:0 2rem 6rem #000; }
 .sheet-close { position:absolute; top:.55rem; right:.7rem; border:0; background:transparent; color:#7c8791; font-size:1.4rem; }
 .weapon-glyph { width:3.4rem; aspect-ratio:1; display:grid; place-items:center; margin:0 auto .6rem; border-radius:50%; background:rgba(233,184,94,.12); color:var(--gold); font-style:normal; font-size:1.4rem; }
 .weapon-sheet>small { color:var(--gold); } .weapon-sheet h2 { margin:.15rem 0 1rem; }
 .weapon-stat { display:flex; justify-content:space-between; padding:.6rem 0; border-top:1px solid var(--line); font-size:.75rem; } .weapon-stat span { color:#7f8a95; }
 .weapon-sheet p { color:#929ca6; font-size:.75rem; line-height:1.6; margin-bottom:0; }
+.range-diagram { margin:.7rem 0 .85rem; padding:.65rem .75rem .55rem; border:1px solid rgba(233,184,94,.16); border-radius:.85rem; background:linear-gradient(145deg,rgba(233,184,94,.07),rgba(8,12,17,.36)); text-align:left; }
+.range-diagram>header { display:flex; align-items:center; justify-content:space-between; color:#858f99; font-size:.6rem; }
+.range-diagram>header b { color:var(--gold); font-size:.65rem; letter-spacing:.06em; }
+.range-diagram-grid { position:relative; width:12.1rem; height:6.7rem; margin:.2rem auto .3rem; }
+.range-hex { --range-step:2.18rem; position:absolute; left:calc(.35rem + var(--range-x)*var(--range-step)); top:calc(.1rem + var(--range-y)*1.62rem); width:2.25rem; height:2.6rem; display:grid; place-items:center; align-content:center; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); background:#252f38; color:#626d77; line-height:1; }
+.range-hex::before { content:""; position:absolute; inset:2px; z-index:0; clip-path:inherit; background:#141c23; }
+.range-hex strong,.range-hex small { position:relative; z-index:1; }.range-hex strong { font-size:.8rem; }.range-hex small { margin-top:.18rem; font-size:.43rem; }
+.range-hex.is-hit { color:#251a09; background:#ffe0a0; filter:drop-shadow(0 0 .35rem rgba(233,184,94,.25)); }
+.range-hex.is-hit::before { background:var(--gold); }
+.range-hex.is-origin { color:#082b30; background:#baf8fc; }
+.range-hex.is-origin::before { background:var(--cyan); }
+.range-hex.is-blind { color:#b76c65; background:#613832; }
+.range-hex.is-blind::before { background:#251b1c; }
+.range-diagram>footer { display:flex; align-items:center; gap:.65rem; color:#7b858f; font-size:.5rem; }
+.range-diagram>footer span { display:flex; align-items:center; gap:.22rem; }
+.range-diagram>footer i { width:.48rem; aspect-ratio:1; border-radius:50%; background:var(--gold); }
+.range-diagram>footer i.legend-origin { background:var(--cyan); }
+.range-diagram>footer small { margin-left:auto; color:#59636d; font-size:.47rem; }
 
 @media (max-height:500px) {
   :root { --hex-w:clamp(2.25rem,5vw,3.8rem); }
@@ -192,6 +210,7 @@ button,input { font:inherit; } button { color:inherit; }
   .operation-copy p { line-height:1.35; } .attack-weapons { margin-top:.4rem; } .direction-choice { margin-top:.35rem; padding:.4rem .5rem; } .confirm-action { min-height:2.45rem; }
   .timer { top:2.55rem; } .home-screen { padding-top:3rem; } .match-card { padding:.8rem 1rem; } .weapon-card { padding-block:.42rem; }
   .board-field { padding-block:1.35rem; } .resolution-panel h2 { margin:.45rem 0; min-height:2.7em; } .resolution-track { margin-top:.4rem; }
+  .weapon-sheet { padding-block:.8rem; } .weapon-glyph { width:2.7rem; margin-bottom:.35rem; } .weapon-sheet h2 { margin-bottom:.35rem; }
 }
 @media (max-width:760px) and (orientation:landscape) {
   :root { --hex-w:clamp(2.15rem,5.3vw,2.75rem); }

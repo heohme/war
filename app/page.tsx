@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   BOARD_CELLS, BOARD_IDS, BOARD_ROWS, WEAPONS, canRemove, legalMoveTargets, opponent,
   weaponAimCells, weaponAttackCells, weaponHitChance,
@@ -13,6 +13,16 @@ type RoomCredential = { roomId: string; side: Side; token: string; playerId: str
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
 const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", axe: "斧", spear: "枪", bow: "弓" };
+const WEAPON_RANGE_SHORT: Record<WeaponId, string> = { sword: "0～2格", axe: "扇形1格", spear: "0～3格", bow: "2～4格" };
+const RANGE_DIAGRAM_CELLS = [
+  { id: "0,-1", x: 0.5, y: 0 },
+  { id: "0,0", x: 0, y: 1 },
+  { id: "1,0", x: 1, y: 1 },
+  { id: "2,0", x: 2, y: 1 },
+  { id: "3,0", x: 3, y: 1 },
+  { id: "4,0", x: 4, y: 1 },
+  { id: "0,1", x: 0.5, y: 2 },
+] as const;
 const EMPTY_LOCKS: Locks = {
   cyan: { remove: false, move: false, attack: false },
   red: { remove: false, move: false, attack: false },
@@ -210,6 +220,7 @@ export default function Home() {
   const [opponentConnected, setOpponentConnected] = useState(true);
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const side = credential?.side || "cyan";
   const myLocks = locks[side];
@@ -316,8 +327,21 @@ export default function Home() {
   const toggleWeapon = (weapon: WeaponId) => setWeapons((current) => current.includes(weapon)
     ? current.length === 1 ? current : current.filter((item) => item !== weapon)
     : current.length < 2 ? [...current, weapon] : [current[1], weapon]);
-  const holdWeapon = (weapon: WeaponId) => { longPressRef.current = setTimeout(() => setDetailWeapon(weapon), 420); };
+  const holdWeapon = (weapon: WeaponId) => {
+    longPressTriggeredRef.current = false;
+    longPressRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setDetailWeapon(weapon);
+    }, 420);
+  };
   const clearHold = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
+  const clickWeapon = (weapon: WeaponId) => {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    toggleWeapon(weapon);
+  };
   const send = (payload: Record<string, unknown>) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(payload));
   };
@@ -346,13 +370,13 @@ export default function Home() {
       </section>
       <section className="match-card">
         <label className="name-field"><span>你的代号</span><input aria-label="你的代号" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
-        <div className="loadout-title"><span>选择 2 把武器</span><small>点击选择 · 长按看属性</small></div>
+        <div className="loadout-title"><span>选择 2 把武器</span><small>点击选择 · 长按看范围图</small></div>
         <div className="weapon-grid">
           {(Object.keys(WEAPONS) as WeaponId[]).map((weapon) => (
             <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
-              onClick={() => toggleWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
+              onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
               onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
-              <i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}</span><small>{Math.round(weaponHitChance(weapon) * 100)}%</small>
+              <i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}</span><small>{WEAPON_RANGE_SHORT[weapon]} · {Math.round(weaponHitChance(weapon) * 100)}%</small>
             </button>
           ))}
         </div>
@@ -435,10 +459,31 @@ function WeaponSheet({ weapon, onClose }: { weapon: WeaponId; onClose: () => voi
   const item = WEAPONS[weapon];
   return <div className="sheet-backdrop"><button type="button" className="sheet-dismiss" aria-label="关闭武器属性" onClick={onClose} /><section className="weapon-sheet" aria-modal="true" role="dialog">
     <button className="sheet-close" type="button" onClick={onClose}>×</button><i className="weapon-glyph">{WEAPON_ICONS[weapon]}</i>
-    <small>武器属性</small><h2>{item.name}</h2>
+    <small>武器属性</small><h2>{item.name}</h2><WeaponRangeDiagram weapon={weapon} />
     <div className="weapon-stat"><span>命中条件</span><strong>D6 ≥ {item.threshold}</strong></div>
     <div className="weapon-stat"><span>命中率</span><strong>{Math.round(weaponHitChance(weapon) * 100)}%</strong></div>
     <div className="weapon-stat"><span>范围 / 伤害</span><strong>{item.rangeLabel} · {item.damageLabel}</strong></div>
     <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : "远程 · 可跨缺口"}</strong></div><p>{item.description}</p>
   </section></div>;
+}
+
+function WeaponRangeDiagram({ weapon }: { weapon: WeaponId }) {
+  const attacks = new Map(weaponAttackCells(weapon, "0,0", 1).map((cell) => [cell.cell, cell.damage]));
+  return <section className="range-diagram" aria-label={`${WEAPONS[weapon].name}向 1 号方向攻击范围图`}>
+    <header><span>攻击范围示意</span><b>1 号方向 →</b></header>
+    <div className="range-diagram-grid">
+      {RANGE_DIAGRAM_CELLS.map((cell) => {
+        const damage = attacks.get(cell.id);
+        const origin = cell.id === "0,0";
+        const blind = weapon === "bow" && cell.id === "1,0";
+        const style = { "--range-x": cell.x, "--range-y": cell.y } as CSSProperties;
+        return <span key={cell.id} style={style} className={`range-hex ${damage ? "is-hit" : ""} ${origin ? "is-origin" : ""} ${blind ? "is-blind" : ""}`}>
+          {origin ? <><strong>我</strong><small>{damage ? `同格 ${damage}伤` : "起点"}</small></>
+            : damage ? <><strong>{damage}</strong><small>伤害</small></>
+              : blind ? <><strong>×</strong><small>盲区</small></> : null}
+        </span>;
+      })}
+    </div>
+    <footer><span><i className="legend-hit" />命中格</span><span><i className="legend-origin" />当前位置</span><small>图中数字为命中后的伤害</small></footer>
+  </section>;
 }
