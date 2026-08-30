@@ -1,0 +1,41 @@
+app/page.tsx
+  s_c5cc5ad7c51856::t_4f29ce99eb99b3 226,403,437,558
+  s_c5cc5ad7c51856::t_5291cbfa2a1003 13-14,223-225,227-228,232,242-247,257,277,287,328-329,344,366,376-383,386,388,391-402,404-436,438-441,444,475,490,540-557,559-581
+  s_c5cc5ad7c51856::t_75797691bcc0b0 582
+tests/feedback.test.mjs
+  s_c5cc5ad7c51856::t_128fca00cafc7a 1-2,4-20
+  s_c5cc5ad7c51856::t_1927cba7713621 3
+tests/rendered-html.test.mjs
+  s_c5cc5ad7c51856::t_128fca00cafc7a 25-26
+docs/product.md
+  s_c5cc5ad7c51856::t_cb4f7b78427307 3-9
+functions/api/feedback.ts
+  s_c5cc5ad7c51856::t_128fca00cafc7a 1-16
+docs/architecture.md
+  s_c5cc5ad7c51856::t_cb4f7b78427307 3-6
+lib/feedback.ts
+  s_c5cc5ad7c51856::t_1927cba7713621 1-28
+app/globals.css
+  s_c5cc5ad7c51856::t_c93cb4d6964229 7,51,180-212,247,251
+worker/api.ts
+  s_c5cc5ad7c51856::t_128fca00cafc7a 88-92,148,150,152,173-181,186-187
+  s_c5cc5ad7c51856::t_780827d1286179 131-140,149,151
+  s_c5cc5ad7c51856::t_1f974000242fd0 28-29,182-185
+  s_c5cc5ad7c51856::t_1927cba7713621 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "68b77a85eda25bf48c3424812501ac0a4b8f06f1",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
