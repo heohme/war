@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "multiwar-api",
+  "main": "worker/api.ts",
+  "compatibility_date": "2026-05-22",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGIN": "https://multiwar.pages.dev"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MATCH_QUEUE", "class_name": "MatchQueue" },
+      { "name": "GAME_ROOM", "class_name": "GameRoom" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["MatchQueue", "GameRoom"]
+    }
+  ]
+}

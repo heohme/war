@@ -1,0 +1,439 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  BOARD_CELLS, BOARD_IDS, BOARD_ROWS, WEAPONS, canRemove, legalMoveTargets, opponent,
+  weaponAimCells, weaponAttackCells, weaponHitChance,
+  type GameState, type ResolutionEvent, type Side, type WeaponId,
+} from "../lib/game";
+
+type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
+type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
+type RoomCredential = { roomId: string; side: Side; token: string; playerId: string };
+
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
+const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", axe: "斧", spear: "枪", bow: "弓" };
+const EMPTY_LOCKS: Locks = {
+  cyan: { remove: false, move: false, attack: false },
+  red: { remove: false, move: false, attack: false },
+};
+
+function websocketUrl(path: string) {
+  const base = new URL(API_ORIGIN);
+  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+  return new URL(path, base).toString();
+}
+
+function getPlayerId() {
+  const id = crypto.randomUUID();
+  sessionStorage.setItem("multiwar-player-id", id);
+  return id;
+}
+
+function sideName(side?: Side) {
+  return side === "cyan" ? "青方" : "赤方";
+}
+
+function cellName(cell?: string) {
+  if (!cell) return "未知地块";
+  const [q, r] = cell.split(",");
+  return `地块 ${q}·${r}`;
+}
+
+function eventText(event?: ResolutionEvent) {
+  if (!event) return "正在展开双方的秘密计划…";
+  const who = sideName(event.side);
+  const target = sideName(event.targetSide);
+  const weapon = event.weapon ? WEAPONS[event.weapon].name : "武器";
+  switch (event.type) {
+    case "remove": return `${who} 撤除了 ${cellName(event.cell)}`;
+    case "remove_skipped": return `${who} 放弃本回合撤除`;
+    case "remove_failed": return `${who} 选择的 ${cellName(event.cell)} 已不可撤，本次机会作废`;
+    case "move": return `${who} 第 ${event.step} 步移动到 ${cellName(event.to)}`;
+    case "move_stay": return `${who} 选择原地观察`;
+    case "move_blocked": return `${who} 前往 ${cellName(event.to)} 的路线被缺口截断`;
+    case "attack": return `${who} 举起${weapon}，瞄准 ${event.direction} 号方向`;
+    case "attack_skipped": return `${who} 本回合没有发动攻击`;
+    case "attack_missed_range": return `${who} 的${weapon}攻向 ${event.direction} 号方向，目标不在范围内`;
+    case "die": return `${who} 使用${weapon}攻向 ${event.direction} 号方向，掷出 ${event.roll} 点：${event.hit ? "命中！" : "攻击无效"}`;
+    case "damage": return `${who} 造成 ${event.damage} 点伤害，${target}剩余 ${event.health} 点生命`;
+    case "defeated": return `${target} 生命归零，被击败`;
+    case "round_end": return `第 ${event.round} 回合即将开始`;
+    default: return "结算中";
+  }
+}
+
+function phaseOf(event?: ResolutionEvent) {
+  if (!event) return "揭晓";
+  if (event.type.startsWith("remove")) return "撤";
+  if (event.type.startsWith("move")) return "搜";
+  if (["attack", "attack_skipped", "attack_missed_range", "die", "damage", "defeated"].includes(event.type)) return "打";
+  return "终";
+}
+
+function replayDelay(event?: ResolutionEvent) {
+  if (!event) return 650;
+  if (event.type === "die") return 1_250;
+  if (event.type === "damage" || event.type === "remove") return 1_050;
+  if (event.type === "round_end") return 850;
+  return 900;
+}
+
+function replayEvent(current: GameState, event: ResolutionEvent, after: GameState, isLast: boolean) {
+  if (event.type === "round_end" || (isLast && after.winner)) return after;
+  const next: GameState = {
+    ...current,
+    removed: [...current.removed],
+    players: {
+      cyan: { ...current.players.cyan, weapons: [...current.players.cyan.weapons] },
+      red: { ...current.players.red, weapons: [...current.players.red.weapons] },
+    },
+  };
+  if (event.type === "remove" && event.cell && !next.removed.includes(event.cell)) next.removed.push(event.cell);
+  if (event.type === "move" && event.side && event.to) next.players[event.side].position = event.to;
+  if (event.type === "damage" && event.targetSide && event.health !== undefined) next.players[event.targetSide].health = event.health;
+  return next;
+}
+
+function Board({ game, side, mode, selectedRemove, movePath, activeEvent, attackWeapon, attackDirection, onCell, onDirection }: {
+  game: GameState; side: Side; mode: "view" | "remove" | "move" | "attack";
+  selectedRemove?: string; movePath: string[]; activeEvent?: ResolutionEvent;
+  attackWeapon?: WeaponId; attackDirection?: number; onCell?: (cell: string) => void; onDirection?: (direction: number) => void;
+}) {
+  const removed = new Set(game.removed);
+  const previewPosition = movePath.at(-1) || game.players[side].position;
+  const previewGame = selectedRemove ? { ...game, removed: [...game.removed, selectedRemove] } : game;
+  const legalMoves = new Set(mode === "move" ? legalMoveTargets(previewGame, previewPosition) : []);
+  const removable = useMemo(() => mode === "remove"
+    ? new Set(BOARD_CELLS.map(({ q, r }) => `${q},${r}`).filter((id) => canRemove(game, id)))
+    : new Set<string>(), [game, mode]);
+  const visibleDirection = attackDirection || activeEvent?.direction;
+  const visibleWeapon = attackWeapon || activeEvent?.weapon;
+  const attackOrigin = mode === "attack"
+    ? previewPosition
+    : activeEvent?.side ? game.players[activeEvent.side].position : previewPosition;
+  const attackCells = useMemo(() => {
+    const result = new Map<string, number>();
+    if (!visibleWeapon || !visibleDirection) return result;
+    for (const item of weaponAttackCells(visibleWeapon, attackOrigin, visibleDirection)) {
+      if (BOARD_IDS.has(item.cell) && !game.removed.includes(item.cell)) {
+        result.set(item.cell, Math.max(result.get(item.cell) ?? 0, item.damage));
+      }
+    }
+    return result;
+  }, [attackOrigin, game.removed, visibleDirection, visibleWeapon]);
+  const aimDirections = useMemo(() => {
+    const result = new Map<string, number>();
+    if (mode !== "attack" || !visibleWeapon) return result;
+    for (const item of weaponAimCells(visibleWeapon, attackOrigin)) {
+      if (BOARD_IDS.has(item.cell) && !game.removed.includes(item.cell)) result.set(item.cell, item.direction);
+    }
+    return result;
+  }, [attackOrigin, game.removed, mode, visibleWeapon]);
+  const showCompass = mode === "attack" || Boolean(visibleDirection);
+
+  return (
+    <div className="board-wrap" aria-label="六边格战场">
+      <div className={`board-field phase-${phaseOf(activeEvent)}`}>
+        <div className="board">
+        {BOARD_ROWS.map((row) => (
+          <div className={`hex-row ${Math.abs(row) % 2 ? "is-offset" : ""}`} key={row}>
+            {BOARD_CELLS.filter((cell) => cell.r === row).map(({ q, r }) => {
+              const id = `${q},${r}`;
+              const cyanHere = game.players.cyan.position === id;
+              const redHere = game.players.red.position === id;
+              const pathIndex = movePath.indexOf(id);
+              const isActive = activeEvent?.cell === id || activeEvent?.to === id;
+              const aimDirection = aimDirections.get(id);
+              const attackDamage = attackCells.get(id);
+              const selectable = removable.has(id) || legalMoves.has(id) || Boolean(aimDirection);
+              return (
+                <button type="button" key={id}
+                  className={["hex", removed.has(id) ? "is-removed" : "", removable.has(id) ? "is-removable" : "", selectedRemove === id ? "is-remove-target" : "", legalMoves.has(id) ? "is-move-target" : "", aimDirection ? "is-aim-option" : "", attackDamage ? "is-attack-cell" : "", id === attackOrigin && visibleWeapon && WEAPONS[visibleWeapon].melee ? "is-attack-origin" : "", isActive ? "is-event" : ""].filter(Boolean).join(" ")}
+                  disabled={mode === "view" || !selectable} onClick={() => mode === "attack" && aimDirection ? onDirection?.(aimDirection) : onCell?.(id)}
+                  aria-label={`地块 ${id}${selectable ? "，可选择" : ""}`}>
+                  {selectedRemove === id && <span className="remove-choice">撤</span>}
+                  {attackDamage !== undefined && <span className="attack-damage">{attackDamage}<small>伤</small></span>}
+                  {pathIndex >= 0 && mode !== "attack" && <span className="path-step">{pathIndex + 1}</span>}
+                  {cyanHere && !(mode === "attack" && side === "cyan" && movePath.length) && <span className="piece cyan-piece"><b>青</b></span>}
+                  {redHere && !(mode === "attack" && side === "red" && movePath.length) && <span className="piece red-piece"><b>赤</b></span>}
+                  {movePath.length > 0 && previewPosition === id && <span className={`piece planned-piece ${side}-piece`}><b>{side === "cyan" ? "青" : "赤"}</b></span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+        </div>
+        {showCompass && <div className="direction-compass" aria-label="地图六方向">
+          {[1,2,3,4,5,6].map((item) => <span key={item}
+            className={`map-direction dir-${item} ${visibleDirection === item ? "selected" : ""}`}><b>{item}</b><small>方向</small></span>)}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+function PlayerHud({ game, side, me }: { game: GameState; side: Side; me: Side }) {
+  const player = game.players[side];
+  return (
+    <div className={`player-hud ${side} ${side === me ? "is-me" : ""}`}>
+      <div className="avatar">{side === "cyan" ? "青" : "赤"}</div>
+      <div className="player-copy">
+        <div><strong>{player.name}</strong><span>{side === me ? "你" : "对手"}</span></div>
+        <div className="health-pips" aria-label={`${player.health} 点生命`}>
+          {Array.from({ length: 6 }, (_, i) => <i className={i < player.health ? "full" : ""} key={i} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const [screen, setScreen] = useState<Screen>("home");
+  const [name, setName] = useState("");
+  const [weapons, setWeapons] = useState<WeaponId[]>(["sword", "bow"]);
+  const [detailWeapon, setDetailWeapon] = useState<WeaponId | null>(null);
+  const [credential, setCredential] = useState<RoomCredential | null>(null);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [locks, setLocks] = useState<Locks>(EMPTY_LOCKS);
+  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
+  const [seconds, setSeconds] = useState(30);
+  const [removeCell, setRemoveCell] = useState<string>();
+  const [moves, setMoves] = useState<string[]>([]);
+  const [attackWeapon, setAttackWeapon] = useState<WeaponId>("sword");
+  const [direction, setDirection] = useState(1);
+  const [events, setEvents] = useState<ResolutionEvent[]>([]);
+  const [eventIndex, setEventIndex] = useState(-1);
+  const [resolutionAfter, setResolutionAfter] = useState<GameState | null>(null);
+  const [notice, setNotice] = useState("");
+  const [opponentConnected, setOpponentConnected] = useState(true);
+  const socketRef = useRef<WebSocket | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const side = credential?.side || "cyan";
+  const myLocks = locks[side];
+  const stage = !myLocks.remove ? 0 : !myLocks.move ? 1 : !myLocks.attack ? 2 : 3;
+
+  const resetDraft = useCallback(() => {
+    setRemoveCell(undefined); setMoves([]); setDirection(1);
+  }, []);
+
+  const connectRoom = useCallback((next: RoomCredential) => {
+    socketRef.current?.close();
+    setCredential(next);
+    sessionStorage.setItem("multiwar-room", JSON.stringify(next));
+    const params = new URLSearchParams({ playerId: next.playerId, token: next.token });
+    const socket = new WebSocket(websocketUrl(`/ws/room/${next.roomId}?${params}`));
+    socketRef.current = socket;
+    socket.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      if (data.type === "room_snapshot") {
+        setGame(data.game); setLocks(data.locks || EMPTY_LOCKS); setDeadlineAt(data.deadlineAt || null);
+        setAttackWeapon(data.game.players[next.side].weapons[0]);
+        if (data.status === "finished") setScreen("finished");
+        else if (data.status === "resolving" && data.latest) {
+          setGame(data.latest.before); setResolutionAfter(data.latest.after);
+          setEvents(data.latest.events); setEventIndex(-1); setScreen("resolving");
+        } else if (data.status === "planning") setScreen("planning");
+        else setScreen("matching");
+      }
+      if (data.type === "round_started") {
+        setGame(data.game); setLocks(data.locks); setDeadlineAt(data.deadlineAt);
+        setAttackWeapon(data.game.players[next.side].weapons[0]);
+        setEvents([]); setEventIndex(-1); setResolutionAfter(null); resetDraft(); setScreen("planning");
+      }
+      if (data.type === "progress") setLocks(data.locks);
+      if (data.type === "connection" && data.side === opponent(next.side)) setOpponentConnected(data.connected);
+      if (data.type === "resolution") {
+        setGame(data.before); setResolutionAfter(data.after); setEvents(data.events); setEventIndex(-1); setDeadlineAt(null);
+        setScreen("resolving");
+      }
+      if (data.type === "error") setNotice("操作没有生效，请重新选择");
+    };
+    socket.onopen = () => setNotice("");
+    socket.onerror = () => setNotice("连接不稳定，正在尝试恢复…");
+    socket.onclose = (event) => {
+      if (event.code !== 1000 && socketRef.current === socket) setNotice("连接已中断，点击可重新连接");
+    };
+  }, [resetDraft]);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("multiwar-room");
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    if (saved) {
+      try {
+        const room = JSON.parse(saved) as RoomCredential;
+        reconnectTimer = setTimeout(() => connectRoom(room), 0);
+      } catch { sessionStorage.removeItem("multiwar-room"); }
+    }
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socketRef.current?.close();
+    };
+  }, [connectRoom]);
+
+  useEffect(() => {
+    if (!deadlineAt) return;
+    const tick = () => setSeconds(Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000)));
+    tick(); const timer = setInterval(tick, 250); return () => clearInterval(timer);
+  }, [deadlineAt]);
+
+  useEffect(() => {
+    if (screen !== "resolving" || !resolutionAfter) return;
+    const nextIndex = eventIndex + 1;
+    if (nextIndex >= events.length) {
+      if (!resolutionAfter.winner) return;
+      const finishTimer = setTimeout(() => setScreen("finished"), 700);
+      return () => clearTimeout(finishTimer);
+    }
+    const timer = setTimeout(() => {
+      const event = events[nextIndex];
+      setEventIndex(nextIndex);
+      setGame((current) => current ? replayEvent(current, event, resolutionAfter, nextIndex === events.length - 1) : current);
+    }, replayDelay(nextIndex > 0 ? events[nextIndex - 1] : undefined));
+    return () => clearTimeout(timer);
+  }, [eventIndex, events, resolutionAfter, screen]);
+
+  const match = () => {
+    const playerId = getPlayerId();
+    localStorage.setItem("multiwar-name", name.trim() || "旅行者");
+    sessionStorage.removeItem("multiwar-room"); socketRef.current?.close(); setScreen("matching");
+    const params = new URLSearchParams({ playerId, name: name.trim() || "旅行者", weapons: weapons.join(",") });
+    const socket = new WebSocket(websocketUrl(`/ws/match?${params}`));
+    socketRef.current = socket;
+    socket.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      if (data.type === "match_found") connectRoom({ roomId: data.roomId, side: data.side, token: data.token, playerId });
+    };
+    socket.onerror = () => setNotice("无法连接对战服务，请稍后重试");
+  };
+
+  const cancelMatch = () => {
+    socketRef.current?.send(JSON.stringify({ type: "cancel_match" })); socketRef.current?.close(); setScreen("home");
+  };
+  const toggleWeapon = (weapon: WeaponId) => setWeapons((current) => current.includes(weapon)
+    ? current.length === 1 ? current : current.filter((item) => item !== weapon)
+    : current.length < 2 ? [...current, weapon] : [current[1], weapon]);
+  const holdWeapon = (weapon: WeaponId) => { longPressRef.current = setTimeout(() => setDetailWeapon(weapon), 420); };
+  const clearHold = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
+  const send = (payload: Record<string, unknown>) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(payload));
+  };
+  const confirmStage = () => {
+    if (!game) return;
+    if (stage === 0) send({ type: "lock_remove", round: game.round, cell: removeCell });
+    if (stage === 1) send({ type: "lock_move", round: game.round, moves });
+    if (stage === 2) send({ type: "lock_attack", round: game.round, weapon: attackWeapon, direction });
+  };
+  const chooseCell = (cell: string) => {
+    if (stage === 0) setRemoveCell((current) => current === cell ? undefined : cell);
+    if (stage === 1 && moves.length < 2) setMoves((current) => [...current, cell]);
+  };
+  const leaveGame = () => {
+    socketRef.current?.close(1000, "leave"); sessionStorage.removeItem("multiwar-room");
+    setCredential(null); setGame(null); setScreen("home");
+  };
+
+  if (screen === "home") return (
+    <main className="game-shell home-screen">
+      <header className="brand-bar"><strong>MULTI·WAR</strong><span>六边格预测对战</span></header>
+      <section className="home-copy">
+        <div className="eyebrow">撤 · 搜 · 打</div>
+        <h1>猜中对手的<br /><em>下一步</em></h1>
+        <p>同时秘密规划，依次公开结算。拆路、走位、掷骰攻击，一局约十分钟。</p>
+      </section>
+      <section className="match-card">
+        <label className="name-field"><span>你的代号</span><input aria-label="你的代号" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
+        <div className="loadout-title"><span>选择 2 把武器</span><small>点击选择 · 长按看属性</small></div>
+        <div className="weapon-grid">
+          {(Object.keys(WEAPONS) as WeaponId[]).map((weapon) => (
+            <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
+              onClick={() => toggleWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
+              onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
+              <i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}</span><small>{Math.round(weaponHitChance(weapon) * 100)}%</small>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="primary-action" onClick={match}>开始匹配<span>1V1 · 实时对战</span></button>
+      </section>
+      {notice && <button className="toast" onClick={() => setNotice("")}>{notice}</button>}
+      {detailWeapon && <WeaponSheet weapon={detailWeapon} onClose={() => setDetailWeapon(null)} />}
+    </main>
+  );
+
+  if (screen === "matching" || !game || !credential) return (
+    <main className="game-shell matching-screen">
+      <div className="radar"><i /><i /><i /><span>VS</span></div>
+      <div><h1>{credential ? "等待对手进入房间" : "正在寻找对手"}</h1><p>已为你保留武器配置</p></div>
+      <button type="button" className="ghost-action" onClick={credential ? leaveGame : cancelMatch}>取消</button>
+    </main>
+  );
+
+  const activeEvent = eventIndex >= 0 ? events[eventIndex] : undefined;
+  const activePhase = phaseOf(activeEvent);
+  const activePhaseIndex = ["撤", "搜", "打", "终"].indexOf(activePhase);
+  const recentEvents = events.slice(Math.max(0, eventIndex - 2), eventIndex + 1);
+  const opponentSide = opponent(side);
+  const winnerText = game.winner === "draw" ? "平局" : game.winner === side ? "你赢了" : "对手获胜";
+  return (
+    <main className={`game-shell battle-shell ${screen}`}>
+      <header className="battle-header">
+        <PlayerHud game={game} side="cyan" me={side} />
+        <div className="round-counter"><span>ROUND</span><strong>{game.round}<i>/14</i></strong><small>{game.initiative === side ? "本回合你先结算" : "本回合对手先结算"}</small></div>
+        <PlayerHud game={game} side="red" me={side} />
+      </header>
+      <section className="battle-stage">
+        <Board game={game} side={side} mode={screen === "planning" ? stage === 0 ? "remove" : stage === 1 ? "move" : stage === 2 ? "attack" : "view" : "view"}
+          selectedRemove={screen === "planning" ? removeCell : undefined} movePath={screen === "planning" ? moves : []}
+          activeEvent={activeEvent} attackWeapon={screen === "planning" && stage === 2 ? attackWeapon : undefined}
+          attackDirection={screen === "planning" && stage === 2 ? direction : undefined}
+          onCell={chooseCell} onDirection={setDirection} />
+      </section>
+
+      {screen === "planning" && <aside className="operation-panel">
+        <div className="phase-track">{["撤", "搜", "打"].map((label, index) => <span key={label} className={index < stage ? "done" : index === stage ? "active" : ""}><i>{index < stage ? "✓" : index + 1}</i>{label}</span>)}</div>
+        <div className={`timer ${seconds <= 8 ? "urgent" : ""}`}><strong>{seconds}</strong><span>秒</span></div>
+        <div className={`operation-copy stage-${stage}`}><small>{stage === 3 ? "计划已锁定" : `步骤 ${stage + 1} / 3`}</small>
+          <h2><b>{stage === 0 ? "撤" : stage === 1 ? "搜" : stage === 2 ? "打" : "✓"}</b>{stage === 0 ? "从外缘撤掉一块地砖" : stage === 1 ? "规划最多两步路线" : stage === 2 ? "选择武器和攻击方向" : "等待对手确认"}</h2>
+          <p>{stage === 0 ? "地图只标出可安全撤除的外缘。点一次选中，再点一次取消；占人或会切断地图的地块不会亮起。" : stage === 1 ? "依次点击相邻地块。若对手先撤掉路线中的砖，你会停在缺口前。" : stage === 2 ? "先点武器，再直接点击地图上带虚线的格子选择方向；金色地块就是该方向的真实攻击范围。" : "双方完成后，将自动播放撤、搜、打的结算。"}</p>
+        </div>
+        {stage === 0 && <div className={`remove-summary ${removeCell ? "has-choice" : ""}`}><i>{removeCell ? "✓" : "—"}</i><span>{removeCell ? `已选择 ${cellName(removeCell)}` : "尚未选择，确认后将跳过"}<small>只可选外缘且撤后地图保持连通的地块</small></span></div>}
+        {stage === 1 && <div className="move-summary"><span>{moves.length ? `已走 ${moves.length} / 2 步` : "原地不动也是策略"}</span><button type="button" onClick={() => setMoves((path) => path.slice(0, -1))} disabled={!moves.length}>撤回一步</button></div>}
+        {stage === 2 && <><div className="attack-weapons">{game.players[side].weapons.map((weapon) => <button key={weapon} type="button" onClick={() => setAttackWeapon(weapon)} className={attackWeapon === weapon ? "selected" : ""}><i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}<small>{WEAPONS[weapon].rangeLabel} · {Math.round(weaponHitChance(weapon) * 100)}%</small></span><b>{WEAPONS[weapon].role}</b></button>)}</div>
+          <div className="direction-choice"><span>地图点击瞄准</span><strong>{direction} 号方向</strong><small>格内数字为命中后的伤害</small></div></>}
+        {stage < 3 && <button type="button" className="confirm-action" onClick={confirmStage}>{stage === 0 ? removeCell ? "确认撤除" : "跳过撤除" : stage === 1 ? moves.length ? "确认路线" : "原地不动" : `用${WEAPONS[attackWeapon].name}攻击 ${direction} 方向`}</button>}
+        {stage === 3 && <div className="locked-state"><i>✓</i><span>你的计划已加密提交<small>{locks[opponentSide].attack ? "对手也已就绪" : "等待对手…"}</small></span></div>}
+      </aside>}
+
+      {screen === "resolving" && <aside className={`resolution-panel event-${activeEvent?.type || "intro"}`}>
+        <div className="resolution-kicker"><span>战斗回放</span><b>{Math.max(0, eventIndex + 1)} / {events.length}</b></div>
+        <div className="resolution-track">{["撤", "搜", "打"].map((label, index) => <span key={label} className={index < activePhaseIndex ? "done" : index === activePhaseIndex ? "active" : ""}><i>{index < activePhaseIndex ? "✓" : label}</i><small>{label === "撤" ? "地形" : label === "搜" ? "走位" : "交锋"}</small></span>)}</div>
+        <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span></div>
+        {activeEvent?.type === "die" && <div className={`big-die ${activeEvent.hit ? "hit" : "miss"}`}><span>{activeEvent.roll}</span><small>需要 {activeEvent.threshold}+</small></div>}
+        <h2>{eventText(activeEvent)}</h2>
+        <div className="battle-log">{recentEvents.map((event, index) => <div key={`${eventIndex}-${index}`} className={index === recentEvents.length - 1 ? "current" : ""}><i>{phaseOf(event)}</i><span>{eventText(event)}</span></div>)}</div>
+        <div className="event-progress">{events.map((_, index) => <i key={index} className={index <= eventIndex ? "active" : ""} />)}</div>
+        <p>只播放双方的公开结算，播放完成后自动进入下一回合</p>
+      </aside>}
+
+      {screen === "finished" && <aside className="result-panel"><small>对局结束</small><h1>{winnerText}</h1>
+        <div className="final-score"><span>{game.players[side].health} HP</span><i>:</i><span>{game.players[opponentSide].health} HP</span></div>
+        <button type="button" className="primary-action" onClick={leaveGame}>返回匹配</button>
+      </aside>}
+      {!opponentConnected && <div className="connection-note">对手暂时离线，房间会为其保留</div>}
+      {notice && <button className="toast" onClick={() => credential && connectRoom(credential)}>{notice}</button>}
+    </main>
+  );
+}
+
+function WeaponSheet({ weapon, onClose }: { weapon: WeaponId; onClose: () => void }) {
+  const item = WEAPONS[weapon];
+  return <div className="sheet-backdrop"><button type="button" className="sheet-dismiss" aria-label="关闭武器属性" onClick={onClose} /><section className="weapon-sheet" aria-modal="true" role="dialog">
+    <button className="sheet-close" type="button" onClick={onClose}>×</button><i className="weapon-glyph">{WEAPON_ICONS[weapon]}</i>
+    <small>武器属性</small><h2>{item.name}</h2>
+    <div className="weapon-stat"><span>命中条件</span><strong>D6 ≥ {item.threshold}</strong></div>
+    <div className="weapon-stat"><span>命中率</span><strong>{Math.round(weaponHitChance(weapon) * 100)}%</strong></div>
+    <div className="weapon-stat"><span>范围 / 伤害</span><strong>{item.rangeLabel} · {item.damageLabel}</strong></div>
+    <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : "远程 · 可跨缺口"}</strong></div><p>{item.description}</p>
+  </section></div>;
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "multiwar",
+  "pages_build_output_dir": "./dist/client",
+  "compatibility_date": "2026-05-22",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MATCH_QUEUE",
+        "class_name": "MatchQueue",
+        "script_name": "multiwar-api"
+      },
+      {
+        "name": "GAME_ROOM",
+        "class_name": "GameRoom",
+        "script_name": "multiwar-api"
+      }
+    ]
+  }
+}
