@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- pre-compressed WebP game sprites need predictable transparent rendering. */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
@@ -15,6 +16,18 @@ type FeedbackStatus = "idle" | "submitting" | "success" | "error";
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
 const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", axe: "斧", spear: "枪", bow: "弓" };
+const WEAPON_ART: Record<WeaponId, string> = {
+  sword: "/assets/weapon-sword.webp",
+  axe: "/assets/weapon-axe.webp",
+  spear: "/assets/weapon-spear.webp",
+  bow: "/assets/weapon-bow.webp",
+};
+const WEAPON_TRAITS: Record<WeaponId, string> = {
+  sword: "均衡 / 近战",
+  axe: "爆发 / 扇形",
+  spear: "突刺 / 直线",
+  bow: "远射 / 压制",
+};
 const WEAPON_RANGE_SHORT: Record<WeaponId, string> = { sword: "0～2格", axe: "扇形1格", spear: "0～3格", bow: "2～4格" };
 const RANGE_DIAGRAM_CELLS = [
   { id: "0,-1", x: 0.5, y: 0 },
@@ -442,21 +455,26 @@ export default function Home() {
   if (screen === "home") return (
     <main className="game-shell home-screen">
       {commonOverlay}
-      <header className="brand-bar"><strong>MULTI·WAR</strong><span>六边格预测对战</span></header>
+      <header className="brand-bar"><strong><i>MW</i>MULTI·WAR</strong><span><b />六边格预测对战</span></header>
       <section className="home-copy">
-        <div className="eyebrow">撤 · 搜 · 打</div>
+        <div className="season-mark"><span>TACTICAL DUEL</span><b>01</b></div>
+        <div className="eyebrow"><i />撤 · 搜 · 打<i /></div>
         <h1>猜中对手的<br /><em>下一步</em></h1>
         <p>同时秘密规划，依次公开结算。拆路、走位、掷骰攻击，一局约十分钟。</p>
+        <div className="battle-features"><span><b>37</b>格动态战场</span><span><b>D6</b>骰运博弈</span><span><b>10′</b>快速对局</span></div>
       </section>
       <section className="match-card">
-        <label className="name-field"><span>你的代号</span><input aria-label="你的代号" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
-        <div className="loadout-title"><span>选择 2 把武器</span><small>点击选择 · 长按看范围图</small></div>
+        <header className="match-card-head"><div><small>战前整备</small><strong>建立你的作战配置</strong></div><span>READY</span></header>
+        <label className="name-field"><span>你的代号</span><input aria-label="你的代号" placeholder="旅行者" value={name} maxLength={12} onChange={(e) => setName(e.target.value)} /></label>
+        <div className="loadout-title"><span>武器库 <b>{weapons.length}/2</b></span><small>点击装备 · 长按看范围图</small></div>
         <div className="weapon-grid">
           {(Object.keys(WEAPONS) as WeaponId[]).map((weapon) => (
             <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
               onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
               onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
-              <i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}</span><small>{WEAPON_RANGE_SHORT[weapon]} · {Math.round(weaponHitChance(weapon) * 100)}%</small>
+              <span className="weapon-art"><img src={WEAPON_ART[weapon]} alt="" draggable={false} /><i>{WEAPON_ICONS[weapon]}</i></span>
+              <span className="weapon-card-copy"><strong>{WEAPONS[weapon].name}</strong><small>{WEAPON_TRAITS[weapon]}</small></span>
+              <span className="weapon-card-stats"><b>{WEAPON_RANGE_SHORT[weapon]}</b><em>{Math.round(weaponHitChance(weapon) * 100)}% 命中</em></span>
             </button>
           ))}
         </div>
@@ -510,7 +528,7 @@ export default function Home() {
         </div>
         {stage === 0 && <div className={`remove-summary ${removeCell ? "has-choice" : ""}`}><i>{removeCell ? "✓" : "—"}</i><span>{removeCell ? `已选择 ${cellName(removeCell)}` : "尚未选择，确认后将跳过"}<small>只可选外缘且撤后地图保持连通的地块</small></span></div>}
         {stage === 1 && <div className="move-summary"><span>{moves.length ? `已走 ${moves.length} / 2 步` : "原地不动也是策略"}</span><button type="button" onClick={() => setMoves((path) => path.slice(0, -1))} disabled={!moves.length}>撤回一步</button></div>}
-        {stage === 2 && <><div className="attack-weapons">{game.players[side].weapons.map((weapon) => <button key={weapon} type="button" onClick={() => setAttackWeapon(weapon)} className={attackWeapon === weapon ? "selected" : ""}><i>{WEAPON_ICONS[weapon]}</i><span>{WEAPONS[weapon].name}<small>{WEAPONS[weapon].rangeLabel} · {Math.round(weaponHitChance(weapon) * 100)}%</small></span><b>{WEAPONS[weapon].role}</b></button>)}</div>
+        {stage === 2 && <><div className="attack-weapons">{game.players[side].weapons.map((weapon) => <button key={weapon} type="button" onClick={() => setAttackWeapon(weapon)} className={attackWeapon === weapon ? "selected" : ""}><i><img src={WEAPON_ART[weapon]} alt="" draggable={false} /></i><span>{WEAPONS[weapon].name}<small>{WEAPONS[weapon].rangeLabel} · {Math.round(weaponHitChance(weapon) * 100)}%</small></span><b>{WEAPONS[weapon].role}</b></button>)}</div>
           <div className="direction-choice"><span>地图点击瞄准</span><strong>{direction} 号方向</strong><small>格内数字为命中后的伤害</small></div></>}
         {stage < 3 && <button type="button" className="confirm-action" onClick={confirmStage}>{stage === 0 ? removeCell ? "确认撤除" : "跳过撤除" : stage === 1 ? moves.length ? "确认路线" : "原地不动" : `用${WEAPONS[attackWeapon].name}攻击 ${direction} 方向`}</button>}
         {stage === 3 && <div className="locked-state"><i>✓</i><span>你的计划已加密提交<small>{locks[opponentSide].attack ? "对手也已就绪" : "等待对手…"}</small></span></div>}
@@ -519,7 +537,7 @@ export default function Home() {
       {screen === "resolving" && <aside className={`resolution-panel event-${activeEvent?.type || "intro"}`}>
         <div className="resolution-kicker"><span>战斗回放</span><b>{Math.max(0, eventIndex + 1)} / {events.length}</b></div>
         <div className="resolution-track">{["撤", "搜", "打"].map((label, index) => <span key={label} className={index < activePhaseIndex ? "done" : index === activePhaseIndex ? "active" : ""}><i>{index < activePhaseIndex ? "✓" : label}</i><small>{label === "撤" ? "地形" : label === "搜" ? "走位" : "交锋"}</small></span>)}</div>
-        <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span></div>
+        <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span>{activeEvent?.weapon && <img src={WEAPON_ART[activeEvent.weapon]} alt={WEAPONS[activeEvent.weapon].name} />}</div>
         {activeEvent?.type === "die" && <div className={`big-die ${activeEvent.hit ? "hit" : "miss"}`}><span>{activeEvent.roll}</span><small>需要 {activeEvent.threshold}+</small></div>}
         <h2>{eventText(activeEvent)}</h2>
         <div className="battle-log">{recentEvents.map((event, index) => <div key={`${eventIndex}-${index}`} className={index === recentEvents.length - 1 ? "current" : ""}><i>{phaseOf(event)}</i><span>{eventText(event)}</span></div>)}</div>
@@ -583,12 +601,14 @@ function RestartSheet({ active, onConfirm, onClose }: { active: boolean; onConfi
 function WeaponSheet({ weapon, onClose }: { weapon: WeaponId; onClose: () => void }) {
   const item = WEAPONS[weapon];
   return <div className="sheet-backdrop"><button type="button" className="sheet-dismiss" aria-label="关闭武器属性" onClick={onClose} /><section className="weapon-sheet" aria-modal="true" role="dialog">
-    <button className="sheet-close" type="button" onClick={onClose}>×</button><i className="weapon-glyph">{WEAPON_ICONS[weapon]}</i>
-    <small>武器属性</small><h2>{item.name}</h2><WeaponRangeDiagram weapon={weapon} />
-    <div className="weapon-stat"><span>命中条件</span><strong>D6 ≥ {item.threshold}</strong></div>
-    <div className="weapon-stat"><span>命中率</span><strong>{Math.round(weaponHitChance(weapon) * 100)}%</strong></div>
-    <div className="weapon-stat"><span>范围 / 伤害</span><strong>{item.rangeLabel} · {item.damageLabel}</strong></div>
-    <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : "远程 · 可跨缺口"}</strong></div><p>{item.description}</p>
+    <button className="sheet-close" type="button" onClick={onClose}>×</button>
+    <div className="weapon-sheet-hero"><img src={WEAPON_ART[weapon]} alt={item.name} /><div><small>兵装档案 · {WEAPON_TRAITS[weapon]}</small><h2>{item.name}</h2><p>{item.description}</p></div></div>
+    <div className="weapon-sheet-body"><WeaponRangeDiagram weapon={weapon} /><div className="weapon-stats">
+      <div className="weapon-stat"><span>命中条件</span><strong>D6 ≥ {item.threshold}</strong></div>
+      <div className="weapon-stat"><span>命中率</span><strong>{Math.round(weaponHitChance(weapon) * 100)}%</strong></div>
+      <div className="weapon-stat"><span>范围 / 伤害</span><strong>{item.rangeLabel} · {item.damageLabel}</strong></div>
+      <div className="weapon-stat"><span>攻击类型</span><strong>{item.melee ? `近战 · 同格 ${item.sameCellDamage} 伤` : "远程 · 可跨缺口"}</strong></div>
+    </div></div>
   </section></div>;
 }
 

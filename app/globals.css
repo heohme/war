@@ -258,3 +258,176 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .game-shell::before { content:"请旋转手机\A横屏才能进入战场"; white-space:pre; position:fixed; inset:0; z-index:100; display:grid; place-items:center; text-align:center; line-height:1.8; background:#090d12; color:var(--gold); letter-spacing:.08em; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
+
+/* Game art direction: tactical stone, brass command surfaces, cyan/red faction light. */
+:root { --ink-soft:#cbd0d2; --dim:#5d6870; --line-strong:rgba(233,184,94,.34); --gold-bright:#ffd98a; --gold-dark:#8f6322; }
+.game-shell { isolation:isolate; background:#080c11; }
+.game-shell::before { content:""; position:absolute; z-index:-2; inset:0; background:url("/assets/battlefield.webp") center/cover no-repeat; filter:saturate(.82) brightness(.61); transform:scale(1.015); }
+.game-shell::after { z-index:-1; opacity:1; background:radial-gradient(circle at 50% 48%,transparent 25%,rgba(4,7,10,.22) 66%,rgba(2,4,6,.8) 100%),linear-gradient(180deg,rgba(3,6,9,.12),rgba(3,6,9,.48)); background-size:auto; box-shadow:inset 0 0 9rem rgba(0,0,0,.65); }
+
+.brand-bar { height:3.8rem; padding-left:3vw; padding-right:7rem; font-size:.65rem; letter-spacing:.16em; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,.035); background:linear-gradient(180deg,rgba(5,8,11,.54),transparent); }
+.brand-bar strong { display:flex; align-items:center; gap:.65rem; }
+.brand-bar strong i { width:1.8rem; aspect-ratio:1; display:grid; place-items:center; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); border:1px solid var(--line-strong); background:rgba(233,184,94,.08); color:var(--gold-bright); font-size:.48rem; font-style:normal; letter-spacing:0; }
+.brand-bar>span { display:flex; align-items:center; gap:.45rem; }
+.brand-bar>span b { width:.38rem; aspect-ratio:1; border-radius:50%; background:var(--cyan); box-shadow:0 0 .7rem var(--cyan); }
+
+.home-screen { grid-template-columns:minmax(0,1.08fr) minmax(28rem,.92fr); gap:5vw; padding:4.3rem 6vw 2.3rem; }
+.home-screen::before { filter:saturate(.92) brightness(.68); }
+.home-screen::after { background:linear-gradient(90deg,rgba(3,7,10,.3) 0%,rgba(3,7,10,.18) 45%,rgba(3,7,10,.58) 100%),radial-gradient(circle at 50% 50%,transparent 20%,rgba(2,4,7,.45) 100%); box-shadow:inset 0 0 7rem rgba(0,0,0,.45); }
+.home-copy { max-width:43rem; text-shadow:0 .2rem 1.4rem rgba(0,0,0,.65); }
+.season-mark { display:flex; align-items:center; gap:.5rem; margin-bottom:clamp(.7rem,2vh,1.4rem); color:#91999d; font-family:var(--font-geist-mono),monospace; font-size:.58rem; letter-spacing:.22em; }
+.season-mark::before { content:""; width:2.4rem; height:1px; background:linear-gradient(90deg,var(--gold),transparent); }
+.season-mark b { display:grid; place-items:center; width:1.35rem; aspect-ratio:1; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); border:1px solid var(--line-strong); background:rgba(233,184,94,.08); color:var(--gold); font-size:.5rem; letter-spacing:0; }
+.eyebrow { display:flex; align-items:center; gap:.65rem; color:var(--gold-bright); font-size:clamp(.65rem,1vw,.82rem); }
+.eyebrow i { width:1.15rem; height:1px; background:var(--gold-dark); }
+.home-copy h1 { font-size:clamp(2.8rem,6vw,6.2rem); font-weight:360; text-shadow:0 0 2rem rgba(0,0,0,.4); }
+.home-copy h1 em { position:relative; color:var(--gold-bright); text-shadow:0 0 2.3rem rgba(233,184,94,.22); }
+.home-copy h1 em::after { content:""; position:absolute; left:.08em; right:0; bottom:-.09em; height:1px; background:linear-gradient(90deg,var(--gold),transparent); }
+.home-copy p { color:#a3aaac; font-size:clamp(.7rem,1.05vw,.92rem); }
+.battle-features { display:flex; gap:clamp(1.1rem,2.4vw,2.4rem); margin-top:clamp(1rem,2.7vh,2rem); }
+.battle-features span { display:grid; gap:.12rem; color:#6f797f; font-size:.58rem; letter-spacing:.06em; }
+.battle-features b { color:#d5d0c6; font-family:var(--font-geist-mono),monospace; font-size:.82rem; font-weight:520; }
+
+.match-card { width:min(34rem,100%); padding:clamp(1rem,1.7vw,1.4rem); border-color:var(--line-strong); border-radius:.45rem; background:linear-gradient(145deg,rgba(24,31,37,.94),rgba(9,14,19,.96)); box-shadow:0 2.4rem 6rem rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.04); }
+.match-card::before,.match-card::after { content:""; position:absolute; width:2.6rem; height:2.6rem; pointer-events:none; }
+.match-card::before { left:-1px; top:-1px; border-left:2px solid var(--gold); border-top:2px solid var(--gold); }
+.match-card::after { right:-1px; bottom:-1px; border-right:2px solid var(--gold); border-bottom:2px solid var(--gold); }
+.match-card-head { display:flex; align-items:center; justify-content:space-between; padding-bottom:.75rem; margin-bottom:.72rem; border-bottom:1px solid var(--line); }
+.match-card-head>div { display:grid; gap:.1rem; }
+.match-card-head small { color:var(--gold); font-size:.52rem; letter-spacing:.2em; text-transform:uppercase; }
+.match-card-head strong { font-size:.84rem; font-weight:560; }
+.match-card-head>span { padding:.28rem .5rem; border:1px solid rgba(81,209,219,.3); background:rgba(81,209,219,.08); color:#9ae4e9; font-family:var(--font-geist-mono),monospace; font-size:.48rem; letter-spacing:.14em; }
+.name-field { grid-template-columns:4.6rem 1fr; align-items:center; gap:.55rem; }
+.name-field input { border-radius:.35rem; padding:.56rem .7rem; background:rgba(4,8,12,.58); transition:border-color .16s,box-shadow .16s; }
+.name-field input::placeholder { color:#4d575d; }
+.name-field input:focus { box-shadow:0 0 0 .15rem rgba(233,184,94,.08); }
+.loadout-title { margin:.72rem 0 .45rem; align-items:center; }
+.loadout-title span { color:#b6bbb9; }
+.loadout-title span b { margin-left:.25rem; color:var(--gold); font-family:var(--font-geist-mono),monospace; }
+.weapon-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.42rem; }
+.weapon-card { min-height:5.3rem; overflow:hidden; border-color:rgba(255,255,255,.08); background:linear-gradient(135deg,rgba(25,33,40,.95),rgba(10,15,20,.95)); border-radius:.35rem; padding:.5rem .55rem .45rem 5rem; display:grid; align-content:center; justify-items:stretch; text-align:left; transition:transform .16s,border-color .16s,background .16s,box-shadow .16s; }
+.weapon-card:hover { transform:translateY(-1px); border-color:rgba(233,184,94,.28); }
+.weapon-art { position:absolute; inset:0 auto 0 0; width:4.8rem; overflow:hidden; background:radial-gradient(circle at 45% 45%,rgba(233,184,94,.12),transparent 65%); }
+.weapon-art img { position:absolute; width:110%; height:110%; left:-15%; top:-5%; object-fit:contain; filter:drop-shadow(0 .35rem .35rem rgba(0,0,0,.7)); transform:rotate(-3deg); }
+.weapon-art i { position:absolute; left:.3rem; bottom:.3rem; width:1.25rem; aspect-ratio:1; display:grid; place-items:center; border:1px solid var(--line); background:rgba(4,8,12,.8); color:#aeb6b7; font-style:normal; font-size:.48rem; }
+.weapon-card-copy { display:grid; gap:.05rem; min-width:0; }
+.weapon-card-copy strong { color:#e5e1d8; font-size:.72rem; font-weight:580; }
+.weapon-card-copy small { color:#6e787f; font-size:.48rem; }
+.weapon-card-stats { display:flex; align-items:center; gap:.42rem; margin-top:.34rem; padding-top:.3rem; border-top:1px solid rgba(255,255,255,.055); font-family:var(--font-geist-mono),monospace; }
+.weapon-card-stats b { color:#9ca5a7; font-size:.48rem; font-weight:500; }
+.weapon-card-stats em { color:#6e787d; font-size:.43rem; font-style:normal; }
+.weapon-card.selected { border-color:var(--gold); background:linear-gradient(135deg,rgba(90,67,30,.34),rgba(16,20,23,.96)); box-shadow:inset .18rem 0 var(--gold),0 0 1.2rem rgba(233,184,94,.08); }
+.weapon-card.selected::after { content:"已装备"; top:.25rem; right:.3rem; font-size:.42rem; letter-spacing:.06em; }
+.weapon-card.selected .weapon-card-copy strong,.weapon-card.selected .weapon-card-stats b { color:var(--gold-bright); }
+.primary-action,.confirm-action { border:1px solid #f5cc79; border-radius:.35rem; background:linear-gradient(145deg,#f1ca7d,#be8126); box-shadow:inset 0 1px rgba(255,255,255,.4),0 .8rem 2rem rgba(199,142,47,.16); transition:filter .16s,transform .16s; }
+.primary-action:hover,.confirm-action:hover { filter:brightness(1.08); }
+.primary-action:active,.confirm-action:active { transform:translateY(1px); }
+.mode-actions { gap:.45rem; margin-top:.72rem; }
+.solo-action { border-radius:.35rem; background:linear-gradient(145deg,rgba(51,124,131,.2),rgba(11,27,31,.72)); }
+
+.matching-screen .radar::before { content:""; position:absolute; inset:-.75rem; clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%); border:1px solid var(--line-strong); background:rgba(9,15,20,.4); }
+.ghost-action { border-radius:.25rem; background:rgba(8,12,16,.5); }
+
+.battle-shell::before { filter:saturate(.72) brightness(.49); }
+.battle-header { border-bottom-color:var(--line-strong); background:linear-gradient(180deg,rgba(9,14,19,.98),rgba(9,14,19,.88)); box-shadow:0 .8rem 2rem rgba(0,0,0,.28); }
+.battle-header::after { content:""; position:absolute; left:30%; right:30%; bottom:-1px; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+.avatar { border-radius:0; transform:none; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); border-width:1px; background:linear-gradient(145deg,#202a32,#0d1318); box-shadow:0 .45rem 1.2rem rgba(0,0,0,.5); }
+.avatar::before { content:""; position:absolute; inset:4px; clip-path:inherit; border:1px solid currentColor; opacity:.25; }
+.player-copy span { border-radius:.15rem; text-transform:uppercase; }
+.health-pips { gap:.14rem; }
+.health-pips i { height:.2rem; transform:skewX(-18deg); }
+.round-counter { min-width:7.4rem; padding:.28rem 1rem; border-inline:1px solid var(--line); background:rgba(255,255,255,.018); }
+.round-counter>span { font-family:var(--font-geist-mono),monospace; }
+.battle-stage::before { content:""; position:absolute; width:min(80%,48rem); aspect-ratio:1.75; border:1px solid rgba(233,184,94,.07); border-radius:50%; box-shadow:0 0 5rem rgba(0,0,0,.55),inset 0 0 3rem rgba(0,0,0,.28); transform:rotateX(58deg); }
+.board,.board-field { position:relative; z-index:1; }
+.hex { background:linear-gradient(145deg,#47525a 0%,#29343c 36%,#171f25 100%); }
+.hex::before { background:linear-gradient(145deg,rgba(255,255,255,.075),transparent 42%),radial-gradient(circle at 50% 55%,rgba(171,140,85,.07),transparent 60%); box-shadow:inset 0 0 .8rem rgba(0,0,0,.34); }
+.map-direction { border-radius:.18rem; transform:rotate(45deg); }
+.map-direction b,.map-direction small { transform:rotate(-45deg); }
+.map-direction.selected { transform:rotate(45deg) scale(1.1); }
+
+.operation-panel,.resolution-panel,.result-panel { border-left-color:var(--line-strong); background:linear-gradient(160deg,rgba(18,25,31,.98),rgba(7,12,17,.98)); box-shadow:-1.2rem 0 3rem rgba(0,0,0,.25); }
+.operation-panel::before,.resolution-panel::before,.result-panel::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.5; background:linear-gradient(135deg,rgba(233,184,94,.04),transparent 26%); }
+.phase-track i,.operation-copy h2 b,.remove-summary>i,.locked-state>i { border-radius:.15rem; }
+.operation-copy { position:relative; }
+.operation-copy>small { letter-spacing:.1em; }
+.remove-summary,.move-summary,.direction-choice { border-radius:.25rem; background:rgba(5,10,14,.52); }
+.attack-weapons button { position:relative; overflow:hidden; border-radius:.25rem; background:rgba(7,12,17,.64); cursor:pointer; }
+.attack-weapons button>i { width:2.35rem; height:2.35rem; overflow:hidden; border-radius:0; border-right:1px solid var(--line); background:transparent; }
+.attack-weapons button>i img { width:125%; height:125%; object-fit:contain; filter:drop-shadow(0 .25rem .2rem #000); }
+.attack-weapons button.selected { box-shadow:inset 2px 0 var(--gold); }
+.confirm-action,.locked-state,.resolution-kicker,.resolution-track,.resolution-panel h2,.battle-log,.event-progress,.resolution-panel>p { position:relative; z-index:1; }
+.resolution-track span,.resolution-track i,.battle-log>div i { border-radius:.15rem; }
+.resolution-actor { position:relative; padding:.45rem .5rem; border-left:2px solid #4c565d; background:linear-gradient(90deg,rgba(255,255,255,.035),transparent); }
+.resolution-actor.cyan { border-left-color:var(--cyan); }
+.resolution-actor.red { border-left-color:var(--red); }
+.resolution-actor>i { border-radius:.15rem; }
+.resolution-actor>img { position:absolute; right:-.25rem; bottom:-.55rem; width:4.8rem; height:4.8rem; object-fit:contain; opacity:.72; filter:drop-shadow(0 .3rem .35rem #000); }
+.big-die { position:relative; z-index:1; border-radius:.45rem; background:linear-gradient(145deg,#fff7e7,#cfc4b0); box-shadow:0 0 2rem rgba(255,255,255,.15),inset 0 0 0 .25rem rgba(82,63,29,.18); }
+.connection-note,.toast { border-color:var(--line-strong); border-radius:.2rem; background:rgba(16,23,29,.96); box-shadow:0 .8rem 2rem rgba(0,0,0,.4); }
+
+.global-actions button { border-radius:.18rem; background:rgba(9,14,19,.9); }
+.global-actions button::after { content:""; position:absolute; inset:3px; border:1px solid rgba(255,255,255,.035); pointer-events:none; }
+.feedback-sheet,.restart-sheet,.weapon-sheet { border-color:var(--line-strong); border-radius:.35rem; background:linear-gradient(150deg,#182128,#0a1015); box-shadow:0 2rem 6rem #000,inset 0 1px rgba(255,255,255,.04); }
+.feedback-description textarea,.feedback-logs,.feedback-submit,.feedback-success button,.restart-glyph,.restart-sheet>div button { border-radius:.25rem; }
+
+.weapon-sheet { width:min(43rem,90vw); padding:0; text-align:left; }
+.sheet-close { z-index:4; width:2rem; aspect-ratio:1; border:1px solid var(--line); border-radius:.15rem; background:rgba(6,10,14,.7); font-size:1.2rem; cursor:pointer; }
+.weapon-sheet-hero { position:relative; min-height:10rem; overflow:hidden; display:grid; grid-template-columns:12rem 1fr; align-items:center; padding:1rem 3rem 1rem .7rem; border-bottom:1px solid var(--line-strong); background:radial-gradient(circle at 18% 50%,rgba(233,184,94,.16),transparent 40%),linear-gradient(115deg,#202a31,#0d1419 62%); }
+.weapon-sheet-hero::after { content:"ARSENAL"; position:absolute; right:1rem; bottom:-.3rem; color:rgba(255,255,255,.025); font-family:var(--font-geist-mono),monospace; font-size:3.2rem; font-weight:800; letter-spacing:-.08em; }
+.weapon-sheet-hero>img { width:11rem; height:9rem; object-fit:contain; filter:drop-shadow(0 .7rem .6rem rgba(0,0,0,.72)); transform:rotate(-5deg); }
+.weapon-sheet-hero>div { position:relative; z-index:1; }
+.weapon-sheet-hero small { color:var(--gold); font-size:.53rem; letter-spacing:.12em; }
+.weapon-sheet-hero h2 { margin:.15rem 0 .35rem; font-size:1.65rem; font-weight:520; }
+.weapon-sheet-hero p { max-width:23rem; margin:0; color:#929c9f; font-size:.66rem; line-height:1.55; }
+.weapon-sheet-body { display:grid; grid-template-columns:1.15fr .85fr; gap:.8rem; padding:.8rem 1rem 1rem; }
+.weapon-stats { align-self:center; }
+.weapon-sheet .weapon-stat { gap:.75rem; font-size:.68rem; }
+.weapon-sheet .weapon-stat:first-child { border-top:0; }
+.weapon-sheet .weapon-stat strong { text-align:right; font-weight:580; }
+.weapon-sheet .range-diagram { margin:0; border-radius:.25rem; }
+
+@media (max-height:600px) {
+  .home-screen { padding-top:3.6rem; padding-bottom:1rem; }
+  .season-mark { margin-bottom:.45rem; }
+  .home-copy p { margin-block:.55rem; line-height:1.5; }
+  .battle-features { margin-top:.65rem; }
+  .match-card { padding:.72rem .9rem; }
+  .match-card-head { padding-bottom:.5rem; margin-bottom:.5rem; }
+  .loadout-title { margin:.5rem 0 .35rem; }
+  .weapon-card { min-height:4.15rem; padding-left:4rem; }
+  .weapon-art { width:3.9rem; }
+  .mode-actions { margin-top:.5rem; }
+  .primary-action,.solo-action { min-height:2.65rem; }
+}
+@media (max-height:500px) {
+  .home-copy h1 { font-size:2.6rem; }
+  .season-mark,.battle-features { display:none; }
+  .match-card { padding:.55rem .75rem; }
+  .match-card-head { display:none; }
+  .weapon-card { min-height:3.45rem; padding:.35rem .45rem .3rem 3.3rem; }
+  .weapon-art { width:3.2rem; }
+  .weapon-card-stats { margin-top:.22rem; padding-top:.2rem; }
+  .weapon-sheet { width:min(40rem,92vw); }
+  .weapon-sheet-hero { min-height:6rem; grid-template-columns:7rem 1fr; }
+  .weapon-sheet-hero>img { width:6.5rem; height:5.6rem; }
+  .weapon-sheet-hero h2 { font-size:1.2rem; }
+  .weapon-sheet-body { padding:.5rem .8rem .65rem; }
+}
+@media (max-width:900px) and (orientation:landscape) {
+  .brand-bar>span { display:none; }
+  .home-screen { grid-template-columns:.78fr 1.22fr; gap:3vw; padding-inline:4vw; }
+  .home-copy h1 { font-size:clamp(2.4rem,6vw,3.6rem); }
+  .home-copy p { max-width:18rem; line-height:1.45; }
+  .match-card { width:100%; }
+}
+@media (max-width:760px) and (orientation:landscape) {
+  .brand-bar { padding-inline:2vw; }
+  .brand-bar>span { display:none; }
+  .home-screen { padding-inline:3vw; grid-template-columns:.7fr 1.3fr; }
+  .home-copy p { font-size:.62rem; }
+  .match-card { border-radius:.25rem; }
+}
+@media (orientation:portrait) {
+  .game-shell::before { content:"请旋转手机\A横屏才能进入战场"; white-space:pre; position:fixed; inset:0; z-index:100; display:grid; place-items:center; text-align:center; line-height:1.8; background:linear-gradient(rgba(5,9,13,.64),rgba(5,9,13,.64)),url("/assets/battlefield.webp") center/cover no-repeat; color:var(--gold); letter-spacing:.08em; filter:none; transform:none; }
+}
