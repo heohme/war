@@ -1,0 +1,21 @@
+README.md
+  s_c5cc5ad7c51856::t_3a7ff389be9447 57-58
+.github/workflows/deploy.yml
+  s_c5cc5ad7c51856::t_3a7ff389be9447 56-57,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "977e47117c2d6a4e85d14537e5a3f24bd0c95525",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
