@@ -1,0 +1,13 @@
+{
+  "feature": "guide-responsive-fit",
+  "status": "complete",
+  "source": "user_screenshot",
+  "issues": [
+    { "id": "UI-001", "status": "fixed" },
+    { "id": "UI-002", "status": "fixed" },
+    { "id": "UI-003", "status": "fixed" }
+  ],
+  "figmaNodeId": null,
+  "styleEvidence": "not_applicable",
+  "visualVerification": "passed_1703x746_and_720x400"
+}
