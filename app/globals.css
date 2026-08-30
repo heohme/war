@@ -4,7 +4,7 @@
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { min-height:100%; overscroll-behavior:none; }
 body { margin:0; background:#080c11; color:var(--ink); font-family:var(--font-geist-sans),"PingFang SC",sans-serif; }
-button,input { font:inherit; } button { color:inherit; }
+button,input,textarea { font:inherit; } button { color:inherit; }
 .game-shell { position:relative; min-height:100svh; overflow:hidden; background:radial-gradient(circle at 48% 55%,rgba(60,75,90,.33),transparent 44%),linear-gradient(135deg,#131b24 0%,#090d12 54%,#121820 100%); }
 .game-shell::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.09; background-image:linear-gradient(30deg,transparent 48%,#fff 49%,transparent 51%); background-size:1rem 1rem; }
 
@@ -48,7 +48,7 @@ button,input { font:inherit; } button { color:inherit; }
 .ghost-action { background:transparent; border:1px solid var(--line); border-radius:2rem; padding:.55rem 2rem; color:var(--muted); cursor:pointer; }
 
 .battle-shell { display:grid; grid-template-rows:clamp(3.1rem,11vh,5.6rem) 1fr; grid-template-columns:minmax(0,1fr) clamp(15.5rem,29vw,25rem); }
-.battle-header { position:relative; z-index:5; grid-column:1/-1; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:.4rem 2vw; border-bottom:1px solid var(--line); background:rgba(8,12,17,.72); }
+.battle-header { position:relative; z-index:5; grid-column:1/-1; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:.4rem 6.4rem .4rem 2vw; border-bottom:1px solid var(--line); background:rgba(8,12,17,.72); }
 .player-hud { display:flex; align-items:center; gap:.65rem; min-width:0; }
 .player-hud.red { justify-self:end; flex-direction:row-reverse; text-align:right; }
 .avatar { width:clamp(2rem,4vw,3.2rem); aspect-ratio:1; flex:none; border-radius:50%; display:grid; place-items:center; border:2px solid; background:#141d26; font-weight:800; }
@@ -177,6 +177,39 @@ button,input { font:inherit; } button { color:inherit; }
 .connection-note,.toast { position:fixed; z-index:20; left:50%; bottom:.8rem; transform:translateX(-50%); border:1px solid var(--line); background:#171e25; color:#bcc4cc; border-radius:2rem; padding:.55rem 1rem; font-size:.68rem; }
 .toast { cursor:pointer; }
 
+.global-actions { position:fixed; z-index:35; top:.65rem; right:.75rem; display:flex; gap:.42rem; }
+.global-actions button { position:relative; width:2.25rem; aspect-ratio:1; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; background:rgba(13,19,26,.88); color:#89949e; cursor:pointer; box-shadow:0 .45rem 1.2rem rgba(0,0,0,.25); backdrop-filter:blur(10px); transition:transform .16s,border-color .16s,color .16s,background .16s; }
+.global-actions button:hover { color:var(--gold); border-color:rgba(233,184,94,.5); background:rgba(233,184,94,.1); transform:translateY(-1px); }
+.global-actions button:active { transform:scale(.94); }
+.global-actions button span { font-size:1rem; font-weight:750; line-height:1; }
+
+.feedback-sheet,.restart-sheet { position:relative; z-index:1; width:min(29rem,88vw); max-height:92svh; overflow:auto; border:1px solid rgba(233,184,94,.3); border-radius:1.15rem; background:#151c24; padding:1.1rem 1.2rem; box-shadow:0 2rem 6rem #000; }
+.feedback-sheet>small,.restart-sheet>small { color:var(--gold); font-size:.62rem; letter-spacing:.12em; }
+.feedback-sheet h2,.restart-sheet h2 { margin:.2rem 0 .8rem; font-size:1.25rem; font-weight:550; }
+.feedback-description { display:grid; gap:.4rem; color:#a2abb4; font-size:.7rem; }
+.feedback-description textarea { width:100%; min-height:6.3rem; resize:none; outline:0; border:1px solid var(--line); border-radius:.75rem; background:#0d131a; color:var(--ink); padding:.7rem .75rem; font-size:.72rem; line-height:1.55; }
+.feedback-description textarea:focus { border-color:var(--gold); box-shadow:0 0 0 .18rem rgba(233,184,94,.08); }
+.feedback-description textarea::placeholder { color:#515c66; }
+.feedback-meta { display:flex; justify-content:space-between; align-items:center; margin-top:.35rem; color:#66717b; font-size:.52rem; }
+.feedback-meta small { font-size:.52rem; }
+.feedback-logs { margin-top:.65rem; border:1px solid var(--line); border-radius:.7rem; background:#10161d; overflow:hidden; }
+.feedback-logs summary { padding:.55rem .65rem; color:#87919b; cursor:pointer; font-size:.62rem; }
+.feedback-logs>div { display:grid; grid-template-columns:3.7rem 2.5rem 1fr; gap:.35rem; padding:.32rem .65rem; border-top:1px solid rgba(255,255,255,.05); color:#707b85; font-size:.5rem; }
+.feedback-logs time { color:#525d67; }.feedback-logs b { color:#a58b5d; font-weight:550; }.feedback-logs span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.feedback-logs>p { margin:.3rem .65rem .6rem; color:#65707a; font-size:.55rem; }
+.feedback-submit,.feedback-success button { width:100%; min-height:2.65rem; margin-top:.75rem; border:0; border-radius:.75rem; background:var(--gold); color:#261b09; cursor:pointer; font-size:.72rem; font-weight:750; }
+.feedback-submit:disabled { cursor:not-allowed; opacity:.35; }
+.feedback-error { margin:.55rem 0 0; color:var(--red); font-size:.6rem; }
+.feedback-success { display:grid; justify-items:center; padding:.8rem 0 .2rem; text-align:center; }
+.feedback-success>i { width:3rem; aspect-ratio:1; display:grid; place-items:center; border-radius:50%; background:var(--cyan); color:#082a2f; font-style:normal; font-size:1.25rem; }
+.feedback-success strong { margin-top:.7rem; }.feedback-success p { color:#7d8892; font-size:.68rem; }
+.restart-sheet { width:min(23rem,86vw); text-align:center; }
+.restart-glyph { width:3rem; aspect-ratio:1; display:grid; place-items:center; margin:0 auto .55rem; border-radius:50%; background:rgba(233,184,94,.12); color:var(--gold); font-size:1.5rem; font-style:normal; }
+.restart-sheet p { color:#87919b; font-size:.7rem; line-height:1.6; }
+.restart-sheet>div { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin-top:.9rem; }
+.restart-sheet>div button { min-height:2.6rem; border-radius:.72rem; cursor:pointer; font-size:.7rem; }
+.restart-cancel { border:1px solid var(--line); background:#111820; color:#99a3ad; }.restart-confirm { border:0; background:var(--gold); color:#271b08; font-weight:750; }
+
 .sheet-backdrop { position:fixed; z-index:40; inset:0; display:grid; place-items:center; background:rgba(2,4,7,.72); backdrop-filter:blur(8px); }
 .sheet-dismiss { position:absolute; inset:0; width:100%; height:100%; border:0; background:transparent; }
 .weapon-sheet { position:relative; z-index:1; width:min(25rem,82vw); max-height:92svh; overflow:auto; border:1px solid rgba(233,184,94,.3); border-radius:1.2rem; background:#151c24; padding:1.15rem 1.3rem; text-align:center; box-shadow:0 2rem 6rem #000; }
@@ -211,10 +244,11 @@ button,input { font:inherit; } button { color:inherit; }
   .timer { top:2.55rem; } .home-screen { padding-top:3rem; } .match-card { padding:.8rem 1rem; } .weapon-card { padding-block:.42rem; }
   .board-field { padding-block:1.35rem; } .resolution-panel h2 { margin:.45rem 0; min-height:2.7em; } .resolution-track { margin-top:.4rem; }
   .weapon-sheet { padding-block:.8rem; } .weapon-glyph { width:2.7rem; margin-bottom:.35rem; } .weapon-sheet h2 { margin-bottom:.35rem; }
+  .feedback-sheet { padding-block:.75rem; } .feedback-description textarea { min-height:4.2rem; } .feedback-logs { max-height:5.5rem; overflow:auto; }
 }
 @media (max-width:760px) and (orientation:landscape) {
   :root { --hex-w:clamp(2.15rem,5.3vw,2.75rem); }
-  .battle-shell { grid-template-columns:minmax(0,1fr) 14.6rem; } .battle-header { padding-inline:.7rem; } .operation-copy p { font-size:.58rem; }
+  .battle-shell { grid-template-columns:minmax(0,1fr) 14.6rem; } .battle-header { padding-left:.7rem; padding-right:5.2rem; } .operation-copy p { font-size:.58rem; }
   .board-field { padding-inline:2rem; } .map-direction { width:1.9rem; } .direction-choice small { display:none; }
   .resolution-track span { padding:.3rem; } .resolution-track small { display:none; } .battle-log { min-height:2.9rem; }
   .home-screen { padding-inline:5vw; grid-template-columns:.9fr 1.1fr; } .home-copy p { max-width:18rem; line-height:1.45; }

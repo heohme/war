@@ -1,5 +1,9 @@
 # Multi War 技术架构
 
+## 问题反馈链路
+
+前端通过同源 `POST /api/feedback` 提交描述、近期操作日志和有限的页面上下文。Pages Function 将请求转发给全局 `MATCH_QUEUE` Durable Object；服务端再次裁剪字段和长度，明确丢弃令牌等未列入白名单的内容，并只保留最近 200 条反馈。
+
 ## 目标
 
 Multi War 是横屏 H5 六边格策略游戏，支持在线 1V1 与单人 AI 训练。首版采用 Cloudflare 全栈部署，前端、匹配、房间状态与回合计时均无需常驻服务器。

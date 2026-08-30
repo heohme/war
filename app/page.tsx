@@ -10,6 +10,8 @@ import {
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
 type RoomCredential = { roomId: string; side: Side; token: string; playerId: string };
+type ActivityLogEntry = { at: number; type: string; detail: string };
+type FeedbackStatus = "idle" | "submitting" | "success" | "error";
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8787";
 const WEAPON_ICONS: Record<WeaponId, string> = { sword: "剑", axe: "斧", spear: "枪", bow: "弓" };
@@ -218,9 +220,16 @@ export default function Home() {
   const [resolutionAfter, setResolutionAfter] = useState<GameState | null>(null);
   const [notice, setNotice] = useState("");
   const [opponentConnected, setOpponentConnected] = useState(true);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackDescription, setFeedbackDescription] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>("idle");
+  const [feedbackLogs, setFeedbackLogs] = useState<ActivityLogEntry[]>([]);
+  const [restartOpen, setRestartOpen] = useState(false);
+  const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const activityLogRef = useRef<ActivityLogEntry[]>([]);
 
   const side = credential?.side || "cyan";
   const myLocks = locks[side];
@@ -228,6 +237,12 @@ export default function Home() {
 
   const resetDraft = useCallback(() => {
     setRemoveCell(undefined); setMoves([]); setDirection(1);
+  }, []);
+
+  const recordActivity = useCallback((type: string, detail: string) => {
+    activityLogRef.current = [...activityLogRef.current, {
+      at: Date.now(), type: type.slice(0, 40), detail: detail.slice(0, 240),
+    }].slice(-40);
   }, []);
 
   const connectRoom = useCallback((next: RoomCredential) => {
@@ -239,6 +254,7 @@ export default function Home() {
     socketRef.current = socket;
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
+      recordActivity("server", `${data.type || "message"}${data.game?.round ? ` · 回合 ${data.game.round}` : ""}`);
       if (data.type === "room_snapshot") {
         setGame(data.game); setLocks(data.locks || EMPTY_LOCKS); setDeadlineAt(data.deadlineAt || null);
         setAttackWeapon(data.game.players[next.side].weapons[0]);
@@ -258,6 +274,7 @@ export default function Home() {
       if (data.type === "connection" && data.side === opponent(next.side)) setOpponentConnected(data.connected);
       if (data.type === "resolution") {
         setGame(data.before); setResolutionAfter(data.after); setEvents(data.events); setEventIndex(-1); setDeadlineAt(null);
+        for (const event of (data.events as ResolutionEvent[]).slice(-12)) recordActivity("结算", eventText(event));
         setScreen("resolving");
       }
       if (data.type === "error") setNotice("操作没有生效，请重新选择");
@@ -267,7 +284,7 @@ export default function Home() {
     socket.onclose = (event) => {
       if (event.code !== 1000 && socketRef.current === socket) setNotice("连接已中断，点击可重新连接");
     };
-  }, [resetDraft]);
+  }, [recordActivity, resetDraft]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("multiwar-room");
@@ -308,6 +325,8 @@ export default function Home() {
 
   const match = (mode: "pvp" | "solo" = "pvp") => {
     const playerId = getPlayerId();
+    setMatchMode(mode);
+    recordActivity("匹配", mode === "solo" ? "开始单人测试" : "开始在线匹配");
     localStorage.setItem("multiwar-name", name.trim() || "旅行者");
     sessionStorage.removeItem("multiwar-room"); socketRef.current?.close(); setScreen("matching");
     const params = new URLSearchParams({ playerId, name: name.trim() || "旅行者", weapons: weapons.join(",") });
@@ -322,6 +341,7 @@ export default function Home() {
   };
 
   const cancelMatch = () => {
+    recordActivity("匹配", "取消匹配");
     socketRef.current?.send(JSON.stringify({ type: "cancel_match" })); socketRef.current?.close(); setScreen("home");
   };
   const toggleWeapon = (weapon: WeaponId) => setWeapons((current) => current.includes(weapon)
@@ -343,6 +363,7 @@ export default function Home() {
     toggleWeapon(weapon);
   };
   const send = (payload: Record<string, unknown>) => {
+    recordActivity("提交", JSON.stringify(payload));
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(payload));
   };
   const confirmStage = () => {
@@ -352,16 +373,75 @@ export default function Home() {
     if (stage === 2) send({ type: "lock_attack", round: game.round, weapon: attackWeapon, direction });
   };
   const chooseCell = (cell: string) => {
-    if (stage === 0) setRemoveCell((current) => current === cell ? undefined : cell);
-    if (stage === 1 && moves.length < 2) setMoves((current) => [...current, cell]);
+    if (stage === 0) {
+      recordActivity("撤", `选择 ${cellName(cell)}`);
+      setRemoveCell((current) => current === cell ? undefined : cell);
+    }
+    if (stage === 1 && moves.length < 2) {
+      recordActivity("搜", `规划移动到 ${cellName(cell)}`);
+      setMoves((current) => [...current, cell]);
+    }
   };
   const leaveGame = () => {
+    recordActivity("对局", "离开当前进度并返回主页");
     socketRef.current?.close(1000, "leave"); sessionStorage.removeItem("multiwar-room");
-    setCredential(null); setGame(null); setScreen("home");
+    setCredential(null); setGame(null); setLocks(EMPTY_LOCKS); setEvents([]); setResolutionAfter(null); resetDraft(); setScreen("home");
   };
+
+  const confirmRestart = () => {
+    setRestartOpen(false);
+    if (screen === "home") {
+      recordActivity("重开", "恢复默认开局配置");
+      setName(""); setWeapons(["sword", "bow"]); setNotice("");
+      return;
+    }
+    leaveGame();
+  };
+
+  const openFeedback = () => {
+    recordActivity("反馈", "打开问题反馈");
+    setFeedbackLogs([...activityLogRef.current]);
+    setFeedbackStatus("idle"); setFeedbackOpen(true);
+  };
+
+  const submitFeedback = async () => {
+    const description = feedbackDescription.trim();
+    if (!description || feedbackStatus === "submitting") return;
+    setFeedbackStatus("submitting");
+    try {
+      const response = await fetch(new URL("/api/feedback", API_ORIGIN), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          description,
+          logs: activityLogRef.current.slice(-40),
+          context: {
+            screen, roomId: credential?.roomId, side: credential?.side, round: game?.round,
+            stage, mode: matchMode, viewport: `${window.innerWidth}x${window.innerHeight}`,
+            path: window.location.pathname, userAgent: navigator.userAgent.slice(0, 180),
+          },
+        }),
+      });
+      if (!response.ok) throw new Error("feedback_failed");
+      recordActivity("反馈", "问题反馈上传成功");
+      setFeedbackStatus("success"); setFeedbackDescription("");
+    } catch {
+      recordActivity("反馈", "问题反馈上传失败");
+      setFeedbackStatus("error");
+    }
+  };
+
+  const commonOverlay = <>
+    <GlobalActions onRestart={() => setRestartOpen(true)} onFeedback={openFeedback} />
+    {feedbackOpen && <FeedbackSheet description={feedbackDescription} status={feedbackStatus}
+      logs={feedbackLogs} onDescription={setFeedbackDescription} onSubmit={submitFeedback}
+      onClose={() => setFeedbackOpen(false)} />}
+    {restartOpen && <RestartSheet active={screen !== "home"} onConfirm={confirmRestart} onClose={() => setRestartOpen(false)} />}
+  </>;
 
   if (screen === "home") return (
     <main className="game-shell home-screen">
+      {commonOverlay}
       <header className="brand-bar"><strong>MULTI·WAR</strong><span>六边格预测对战</span></header>
       <section className="home-copy">
         <div className="eyebrow">撤 · 搜 · 打</div>
@@ -392,6 +472,7 @@ export default function Home() {
 
   if (screen === "matching" || !game || !credential) return (
     <main className="game-shell matching-screen">
+      {commonOverlay}
       <div className="radar"><i /><i /><i /><span>VS</span></div>
       <div><h1>{credential ? "等待对手进入房间" : "正在寻找对手"}</h1><p>已为你保留武器配置</p></div>
       <button type="button" className="ghost-action" onClick={credential ? leaveGame : cancelMatch}>取消</button>
@@ -406,6 +487,7 @@ export default function Home() {
   const winnerText = game.winner === "draw" ? "平局" : game.winner === side ? "你赢了" : "对手获胜";
   return (
     <main className={`game-shell battle-shell ${screen}`}>
+      {commonOverlay}
       <header className="battle-header">
         <PlayerHud game={game} side="cyan" me={side} />
         <div className="round-counter"><span>ROUND</span><strong>{game.round}<i>/14</i></strong><small>{game.initiative === side ? "本回合你先结算" : "本回合对手先结算"}</small></div>
@@ -453,6 +535,49 @@ export default function Home() {
       {notice && <button className="toast" onClick={() => credential && connectRoom(credential)}>{notice}</button>}
     </main>
   );
+}
+
+function GlobalActions({ onRestart, onFeedback }: { onRestart: () => void; onFeedback: () => void }) {
+  return <nav className="global-actions" aria-label="全局操作">
+    <button type="button" onClick={onRestart} aria-label="重新开始" title="重新开始"><span aria-hidden="true">↻</span></button>
+    <button type="button" onClick={onFeedback} aria-label="问题反馈" title="问题反馈"><span aria-hidden="true">?</span></button>
+  </nav>;
+}
+
+function FeedbackSheet({ description, status, logs, onDescription, onSubmit, onClose }: {
+  description: string; status: FeedbackStatus; logs: ActivityLogEntry[];
+  onDescription: (value: string) => void; onSubmit: () => void; onClose: () => void;
+}) {
+  const recent = logs.slice(-8).reverse();
+  return <div className="sheet-backdrop feedback-backdrop">
+    <button type="button" className="sheet-dismiss" aria-label="关闭问题反馈" onClick={onClose} />
+    <section className="feedback-sheet" aria-modal="true" role="dialog" aria-labelledby="feedback-title">
+      <button className="sheet-close" type="button" onClick={onClose}>×</button>
+      <small>帮助我们变得更好</small><h2 id="feedback-title">问题反馈</h2>
+      {status === "success" ? <div className="feedback-success"><i>✓</i><strong>反馈已收到</strong><p>描述和近期操作记录已经安全上传，谢谢你。</p><button type="button" onClick={onClose}>完成</button></div> : <>
+        <label className="feedback-description"><span>问题描述</span><textarea maxLength={600} value={description}
+          onChange={(event) => onDescription(event.target.value)}
+          placeholder="例如：第 3 回合点击 2 号方向后，攻击范围没有更新……" /></label>
+        <div className="feedback-meta"><span>{description.length} / 600</span><small>将附带最近 {logs.length} 条操作记录，不包含房间令牌</small></div>
+        <details className="feedback-logs"><summary>查看将要上传的近期记录</summary>
+          {recent.length ? recent.map((log, index) => <div key={`${log.at}-${index}`}><time>{new Date(log.at).toLocaleTimeString("zh-CN", { hour12: false })}</time><b>{log.type}</b><span>{log.detail}</span></div>) : <p>还没有可附带的操作记录</p>}
+        </details>
+        {status === "error" && <p className="feedback-error">上传失败，请检查网络后重试。</p>}
+        <button type="button" className="feedback-submit" disabled={!description.trim() || status === "submitting"} onClick={onSubmit}>{status === "submitting" ? "正在上传…" : "提交反馈"}</button>
+      </>}
+    </section>
+  </div>;
+}
+
+function RestartSheet({ active, onConfirm, onClose }: { active: boolean; onConfirm: () => void; onClose: () => void }) {
+  return <div className="sheet-backdrop restart-backdrop">
+    <button type="button" className="sheet-dismiss" aria-label="取消重新开始" onClick={onClose} />
+    <section className="restart-sheet" aria-modal="true" role="dialog" aria-labelledby="restart-title">
+      <i className="restart-glyph">↻</i><small>重新开始</small><h2 id="restart-title">{active ? "离开当前进度？" : "恢复默认配置？"}</h2>
+      <p>{active ? "你会退出当前对局并回到开局页；武器配置会保留，当前进度无法恢复。" : "代号会清空，武器恢复为长剑与弓箭。"}</p>
+      <div><button type="button" className="restart-cancel" onClick={onClose}>取消</button><button type="button" className="restart-confirm" onClick={onConfirm}>确认重开</button></div>
+    </section>
+  </div>;
 }
 
 function WeaponSheet({ weapon, onClose }: { weapon: WeaponId; onClose: () => void }) {

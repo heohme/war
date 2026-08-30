@@ -11,6 +11,7 @@ import {
   type TurnPlan,
   type WeaponId,
 } from "../lib/game";
+import { sanitizeFeedback, type FeedbackPayload } from "../lib/feedback";
 
 declare const WebSocketPair: {
   new (): { 0: WebSocket; 1: WebSocket };
@@ -24,6 +25,8 @@ interface WebSocketWithAttachment extends WebSocket {
 interface DurableObjectStorage {
   get<T>(key: string): Promise<T | undefined>;
   put<T>(key: string, value: T): Promise<void>;
+  list<T>(options?: { prefix?: string }): Promise<Map<string, T>>;
+  delete(keys: string[]): Promise<number>;
   setAlarm(timestamp: number): Promise<void>;
   deleteAlarm(): Promise<void>;
 }
@@ -82,6 +85,11 @@ interface StoredRoom {
   botSide?: Side;
 }
 
+interface StoredFeedback extends FeedbackPayload {
+  id: string;
+  createdAt: number;
+}
+
 const json = (value: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(value), {
     ...init,
@@ -120,12 +128,27 @@ function allowedOrigin(request: Request, env: Env): boolean {
   );
 }
 
+function withFeedbackCors(request: Request, response: Response): Response {
+  const headers = new Headers(response.headers);
+  const origin = request.headers.get("origin");
+  if (origin) headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-methods", "POST, OPTIONS");
+  headers.set("access-control-allow-headers", "content-type");
+  headers.set("vary", "origin");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!allowedOrigin(request, env)) return json({ error: "origin_not_allowed" }, { status: 403 });
     if (url.pathname === "/health") {
       return json({ ok: true, service: "multiwar-api", time: Date.now() });
+    }
+    if (url.pathname === "/api/feedback") {
+      if (request.method === "OPTIONS") return withFeedbackCors(request, new Response(null, { status: 204 }));
+      const stub = env.MATCH_QUEUE.get(env.MATCH_QUEUE.idFromName("global-v1"));
+      return withFeedbackCors(request, await stub.fetch(request));
     }
     if (url.pathname === "/ws/match") {
       const stub = env.MATCH_QUEUE.get(env.MATCH_QUEUE.idFromName("global-v1"));
@@ -147,10 +170,24 @@ export class MatchQueue {
   ) {}
 
   async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/feedback" && request.method === "POST") {
+      const length = Number(request.headers.get("content-length") || 0);
+      if (length > 32_000) return json({ error: "payload_too_large" }, { status: 413 });
+      let body: unknown;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, { status: 400 }); }
+      const feedback = sanitizeFeedback(body);
+      if (!feedback) return json({ error: "description_required" }, { status: 400 });
+      const stored: StoredFeedback = { ...feedback, id: crypto.randomUUID(), createdAt: Date.now() };
+      await this.state.storage.put(`feedback:${String(stored.createdAt).padStart(13, "0")}:${stored.id}`, stored);
+      const current = await this.state.storage.list<StoredFeedback>({ prefix: "feedback:" });
+      const expired = [...current.keys()].sort().slice(0, -200);
+      if (expired.length) await this.state.storage.delete(expired);
+      return json({ ok: true, id: stored.id }, { status: 201 });
+    }
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return json({ error: "websocket_required" }, { status: 426 });
     }
-    const url = new URL(request.url);
     const player: QueuePlayer = {
       id: url.searchParams.get("playerId") || crypto.randomUUID(),
       name: (url.searchParams.get("name") || "旅行者").slice(0, 20),

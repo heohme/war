@@ -22,6 +22,8 @@ test("server renders the Multi War matching page", async () => {
   assert.match(html, /在线匹配/);
   assert.match(html, /单人测试/);
   assert.match(html, /长按看范围图/);
+  assert.match(html, /aria-label="重新开始"/);
+  assert.match(html, /aria-label="问题反馈"/);
   assert.match(html, /撤 · 搜 · 打/);
   assert.doesNotMatch(html, /Building your site|react-loading-skeleton/);
 });
