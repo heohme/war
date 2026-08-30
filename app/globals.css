@@ -31,6 +31,11 @@ button,input { font:inherit; } button { color:inherit; }
 .weapon-card.selected::after { content:"✓"; position:absolute; top:.25rem; right:.35rem; color:var(--gold); font-size:.65rem; }
 .primary-action,.confirm-action { width:100%; border:0; cursor:pointer; background:linear-gradient(140deg,#f0c673,#c58b2d); color:#251a09; font-weight:750; border-radius:.9rem; min-height:3.2rem; margin-top:.85rem; display:grid; place-items:center; line-height:1.1; box-shadow:0 .8rem 2rem rgba(199,142,47,.15); }
 .primary-action span { display:block; font-size:.62rem; font-weight:500; opacity:.7; margin-top:.25rem; }
+.mode-actions { display:grid; grid-template-columns:1.1fr .9fr; gap:.55rem; margin-top:.85rem; }
+.mode-actions .primary-action { margin-top:0; }
+.solo-action { min-height:3.2rem; border:1px solid rgba(81,209,219,.45); border-radius:.9rem; background:rgba(81,209,219,.08); color:#bdf8fc; cursor:pointer; font-weight:750; }
+.solo-action span { display:block; margin-top:.25rem; color:#6fabb0; font-size:.62rem; font-weight:500; }
+.solo-action:hover { border-color:var(--cyan); background:rgba(81,209,219,.14); }
 
 .matching-screen { display:grid; place-items:center; align-content:center; gap:1.2rem; text-align:center; }
 .matching-screen h1 { font-size:clamp(1.5rem,3.5vw,2.8rem); margin:0; font-weight:450; }
@@ -194,7 +199,7 @@ button,input { font:inherit; } button { color:inherit; }
   .board-field { padding-inline:2rem; } .map-direction { width:1.9rem; } .direction-choice small { display:none; }
   .resolution-track span { padding:.3rem; } .resolution-track small { display:none; } .battle-log { min-height:2.9rem; }
   .home-screen { padding-inline:5vw; grid-template-columns:.9fr 1.1fr; } .home-copy p { max-width:18rem; line-height:1.45; }
-  .match-card { width:45vw; border-radius:1rem; } .loadout-title small { display:none; }
+  .match-card { width:45vw; border-radius:1rem; } .loadout-title small { display:none; } .mode-actions { gap:.35rem; }
 }
 @media (orientation:portrait) {
   .game-shell::before { content:"请旋转手机\A横屏才能进入战场"; white-space:pre; position:fixed; inset:0; z-index:100; display:grid; place-items:center; text-align:center; line-height:1.8; background:#090d12; color:var(--gold); letter-spacing:.08em; }

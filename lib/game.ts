@@ -217,6 +217,65 @@ export function legalMoveTargets(
     .filter((id) => BOARD_IDS.has(id) && !removed.has(id));
 }
 
+export function cellDistance(a: string, b: string): number {
+  const start = offsetToAxial(parseCell(a));
+  const end = offsetToAxial(parseCell(b));
+  const q = start.q - end.q;
+  const r = start.r - end.r;
+  return (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2;
+}
+
+/** A deterministic training opponent that plans from the same public state as a player. */
+export function planBotTurn(state: GameState, side: Side): TurnPlan {
+  const target = state.players[opponent(side)].position;
+  const visited = new Set<string>([state.players[side].position]);
+  const moves: string[] = [];
+  let position = state.players[side].position;
+
+  for (let step = 0; step < 2 && position !== target; step += 1) {
+    const currentDistance = cellDistance(position, target);
+    const candidates = legalMoveTargets(state, position).sort((a, b) => {
+      const distance = cellDistance(a, target) - cellDistance(b, target);
+      if (distance) return distance;
+      const visitedScore = Number(visited.has(a)) - Number(visited.has(b));
+      return visitedScore || a.localeCompare(b);
+    });
+    const next = candidates[0];
+    if (!next || cellDistance(next, target) > currentDistance) break;
+    moves.push(next);
+    visited.add(next);
+    position = next;
+  }
+
+  const attack = state.players[side].weapons.reduce<{
+    weapon: WeaponId;
+    direction: number;
+    score: number;
+  } | null>((best, weapon) => {
+    for (let direction = 1; direction <= 6; direction += 1) {
+      const damage = attackDamage(weapon, position, target, direction);
+      const nearest = Math.min(...weaponAttackCells(weapon, position, direction)
+        .map((cell) => cellDistance(cell.cell, target)));
+      const score = damage > 0
+        ? 1_000 + damage * weaponHitChance(weapon) * 100
+        : -nearest * 10 + weaponHitChance(weapon);
+      if (!best || score > best.score) best = { weapon, direction, score };
+    }
+    return best;
+  }, null);
+
+  const remove = BOARD_CELLS.map(cellId)
+    .filter((cell) => !moves.includes(cell) && canRemove(state, cell))
+    .sort((a, b) => cellDistance(a, target) - cellDistance(b, target) || a.localeCompare(b))[0];
+
+  return {
+    remove,
+    moves,
+    weapon: attack?.weapon ?? state.players[side].weapons[0],
+    direction: attack?.direction ?? 1,
+  };
+}
+
 export function validateMovePlan(
   state: GameState,
   side: Side,

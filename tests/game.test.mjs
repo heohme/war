@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BOARD_CELLS, attackDamage, canRemove, createGame, isConnected, isOuterEdge, resolveRound, weaponAimCells, weaponAttackCells, weaponHitChance } from "../lib/game.ts";
+import { BOARD_CELLS, attackDamage, canRemove, createGame, isConnected, isOuterEdge, planBotTurn, resolveRound, validateMovePlan, weaponAimCells, weaponAttackCells, weaponHitChance } from "../lib/game.ts";
 
 const cyan = { id: "c", name: "青", weapons: ["sword", "bow"] };
 const red = { id: "r", name: "赤", weapons: ["sword", "bow"] };
@@ -71,4 +71,17 @@ test("initiative kill cancels the defeated player's attack", () => {
   }, () => 2);
   assert.equal(state.winner, "cyan");
   assert.equal(events.filter((event) => event.type === "die").length, 1);
+});
+
+test("training bot creates a complete and legal turn plan", () => {
+  const game = createGame(cyan, { ...red, weapons: ["axe", "spear"] }, "cyan");
+  game.players.cyan.position = "0,0";
+  game.players.red.position = "2,0";
+  const plan = planBotTurn(game, "red");
+  assert.equal(validateMovePlan(game, "red", plan.moves), true);
+  assert.ok(!plan.remove || canRemove(game, plan.remove));
+  assert.ok(game.players.red.weapons.includes(plan.weapon));
+  assert.ok(plan.direction >= 1 && plan.direction <= 6);
+  const attackOrigin = plan.moves.at(-1) || game.players.red.position;
+  assert.ok(attackDamage(plan.weapon, attackOrigin, game.players.cyan.position, plan.direction) > 0);
 });

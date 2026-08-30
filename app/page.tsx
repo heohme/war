@@ -175,11 +175,12 @@ function Board({ game, side, mode, selectedRemove, movePath, activeEvent, attack
 
 function PlayerHud({ game, side, me }: { game: GameState; side: Side; me: Side }) {
   const player = game.players[side];
+  const badge = side === me ? "你" : player.id.startsWith("bot-") ? "AI" : "对手";
   return (
     <div className={`player-hud ${side} ${side === me ? "is-me" : ""}`}>
       <div className="avatar">{side === "cyan" ? "青" : "赤"}</div>
       <div className="player-copy">
-        <div><strong>{player.name}</strong><span>{side === me ? "你" : "对手"}</span></div>
+        <div><strong>{player.name}</strong><span>{badge}</span></div>
         <div className="health-pips" aria-label={`${player.health} 点生命`}>
           {Array.from({ length: 6 }, (_, i) => <i className={i < player.health ? "full" : ""} key={i} />)}
         </div>
@@ -294,11 +295,12 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [eventIndex, events, resolutionAfter, screen]);
 
-  const match = () => {
+  const match = (mode: "pvp" | "solo" = "pvp") => {
     const playerId = getPlayerId();
     localStorage.setItem("multiwar-name", name.trim() || "旅行者");
     sessionStorage.removeItem("multiwar-room"); socketRef.current?.close(); setScreen("matching");
     const params = new URLSearchParams({ playerId, name: name.trim() || "旅行者", weapons: weapons.join(",") });
+    if (mode === "solo") params.set("mode", "solo");
     const socket = new WebSocket(websocketUrl(`/ws/match?${params}`));
     socketRef.current = socket;
     socket.onmessage = (message) => {
@@ -354,7 +356,10 @@ export default function Home() {
             </button>
           ))}
         </div>
-        <button type="button" className="primary-action" onClick={match}>开始匹配<span>1V1 · 实时对战</span></button>
+        <div className="mode-actions">
+          <button type="button" className="primary-action" onClick={() => match("pvp")}>在线匹配<span>1V1 · 实时对战</span></button>
+          <button type="button" className="solo-action" onClick={() => match("solo")}>单人测试<span>AI · 即时开局</span></button>
+        </div>
       </section>
       {notice && <button className="toast" onClick={() => setNotice("")}>{notice}</button>}
       {detailWeapon && <WeaponSheet weapon={detailWeapon} onClose={() => setDetailWeapon(null)} />}

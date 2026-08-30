@@ -2,6 +2,7 @@ import {
   WEAPONS,
   canRemove,
   createGame,
+  planBotTurn,
   resolveRound,
   validateMovePlan,
   type GameState,
@@ -59,6 +60,11 @@ interface RoomPlayer extends QueuePlayer {
   side: Side;
 }
 
+interface QueueAttachment {
+  kind: "queue" | "solo" | "matched";
+  player: QueuePlayer;
+}
+
 interface StoredRoom {
   id: string;
   status: "waiting" | "planning" | "resolving" | "finished";
@@ -73,6 +79,7 @@ interface StoredRoom {
     after: GameState;
     events: ResolutionEvent[];
   };
+  botSide?: Side;
 }
 
 const json = (value: unknown, init: ResponseInit = {}) =>
@@ -149,6 +156,7 @@ export class MatchQueue {
       name: (url.searchParams.get("name") || "旅行者").slice(0, 20),
       weapons: parseWeapons(url.searchParams.get("weapons")),
     };
+    const solo = url.searchParams.get("mode") === "solo";
     for (const existing of this.state.getWebSockets(player.id)) {
       existing.close(4001, "replaced");
     }
@@ -156,25 +164,64 @@ export class MatchQueue {
     const client = pair[0];
     const server = pair[1] as WebSocketWithAttachment;
     this.state.acceptWebSocket(server, [player.id]);
-    server.serializeAttachment({ kind: "queue", player });
+    server.serializeAttachment({ kind: solo ? "solo" : "queue", player } satisfies QueueAttachment);
     const queuedSockets = this.state.getWebSockets();
     server.send(JSON.stringify({ type: "matching", playerId: player.id, queued: queuedSockets.length }));
 
+    if (solo) {
+      await this.createSoloRoom(player, server);
+      return wsResponse(client);
+    }
+
     const opponentSocket = queuedSockets.find((socket) => {
-      const attachment = socket.deserializeAttachment() as
-        | { kind: "queue"; player: QueuePlayer }
-        | undefined;
-      return attachment?.player.id !== player.id;
+      const attachment = socket.deserializeAttachment() as QueueAttachment | undefined;
+      return attachment?.kind === "queue" && attachment.player.id !== player.id;
     });
     if (opponentSocket) {
-      const attachment = opponentSocket.deserializeAttachment() as
-        | { kind: "queue"; player: QueuePlayer }
-        | undefined;
-      if (attachment?.player && attachment.player.id !== player.id) {
+      const attachment = opponentSocket.deserializeAttachment() as QueueAttachment | undefined;
+      if (attachment?.kind === "queue" && attachment.player.id !== player.id) {
         await this.createRoom(attachment.player, opponentSocket, player, server);
       }
     }
     return wsResponse(client);
+  }
+
+  private async createSoloRoom(player: QueuePlayer, socket: WebSocket): Promise<void> {
+    const roomId = crypto.randomUUID();
+    const playerToken = randomToken();
+    const botToken = randomToken();
+    const roomStub = this.env.GAME_ROOM.get(this.env.GAME_ROOM.idFromName(roomId));
+    const response = await roomStub.fetch(
+      new Request("https://room.internal/init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          roomId,
+          botSide: "red",
+          players: {
+            cyan: { ...player, side: "cyan", token: playerToken },
+            red: {
+              id: `bot-${roomId}`,
+              name: "训练机器人",
+              weapons: ["axe", "spear"],
+              side: "red",
+              token: botToken,
+            },
+          },
+        }),
+      }),
+    );
+    if (!response.ok) {
+      socket.send(JSON.stringify({ type: "error", code: "room_create_failed" }));
+      return;
+    }
+    socket.send(JSON.stringify({
+      type: "match_found",
+      roomId,
+      side: "cyan",
+      token: playerToken,
+      solo: true,
+    }));
   }
 
   private async createRoom(
@@ -205,6 +252,14 @@ export class MatchQueue {
       redSocket.send(JSON.stringify({ type: "error", code: "room_create_failed" }));
       return;
     }
+    (cyanSocket as WebSocketWithAttachment).serializeAttachment({
+      kind: "matched",
+      player: cyanPlayer,
+    } satisfies QueueAttachment);
+    (redSocket as WebSocketWithAttachment).serializeAttachment({
+      kind: "matched",
+      player: redPlayer,
+    } satisfies QueueAttachment);
     cyanSocket.send(
       JSON.stringify({ type: "match_found", roomId, side: "cyan", token: cyanToken }),
     );
@@ -236,6 +291,7 @@ export class GameRoom {
       const body = (await request.json()) as {
         roomId: string;
         players: Record<Side, RoomPlayer>;
+        botSide?: Side;
       };
       const initiative: Side = crypto.getRandomValues(new Uint8Array(1))[0] % 2 ? "cyan" : "red";
       const room: StoredRoom = {
@@ -250,6 +306,7 @@ export class GameRoom {
         },
         deadlineAt: null,
         nextRoundAt: null,
+        botSide: body.botSide,
       };
       await this.state.storage.put("room", room);
       return json({ ok: true });
@@ -385,7 +442,7 @@ export class GameRoom {
 
   private bothConnected(room: StoredRoom, joiningSide?: Side): boolean {
     return (Object.keys(room.players) as Side[]).every((side) =>
-      side === joiningSide || this.state.getWebSockets(room.players[side].id).length > 0,
+      side === room.botSide || side === joiningSide || this.state.getWebSockets(room.players[side].id).length > 0,
     );
   }
 
@@ -396,6 +453,10 @@ export class GameRoom {
       cyan: { remove: false, move: false, attack: false },
       red: { remove: false, move: false, attack: false },
     };
+    if (room.botSide) {
+      room.plans[room.botSide] = planBotTurn(room.game, room.botSide);
+      room.locks[room.botSide] = { remove: true, move: true, attack: true };
+    }
     room.deadlineAt = Date.now() + 30_000;
     room.nextRoundAt = null;
     await this.state.storage.put("room", room);

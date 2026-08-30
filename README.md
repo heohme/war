@@ -1,6 +1,6 @@
 # Multi War
 
-横屏 H5 六边格 1V1 策略游戏。双方在 30 秒内秘密规划“撤 → 搜 → 打”，随后由服务器依次公开结算。
+横屏 H5 六边格策略游戏。双方在 30 秒内秘密规划“撤 → 搜 → 打”，随后由服务器依次公开结算；既可在线 1V1，也可用单人 AI 模式快速测试完整对局。
 
 线上地址：<https://multiwar.pages.dev>
 
@@ -12,6 +12,7 @@
 - 对手撤掉预设路线时，移动停在缺口前；
 - 长剑、战斧、长枪、弓箭四种范围和命中门槛；
 - D6 骰子判定，先后手逐回合交换，最多 14 回合；
+- 单人测试模式即时建房，由训练 AI 自动完成撤、搜、打；
 - WebSocket 实时匹配、房间重连、服务器权威结算。
 
 详细规则见 [产品文档](docs/product.md)，部署结构见 [技术架构](docs/architecture.md)。
@@ -41,7 +42,7 @@ npm test
 npm run smoke:ws
 ```
 
-`smoke:ws` 会连接线上 `multiwar.pages.dev`，确认两名测试玩家进入同一个房间。
+`smoke:ws` 会连接线上 `multiwar.pages.dev`，确认在线匹配与单人 AI 房间均可正常建立。
 
 ## 自动发布
 
@@ -50,7 +51,7 @@ npm run smoke:ws
 1. 安装依赖并运行 lint、规则测试和生产构建；
 2. 部署 `multiwar-api` Worker；
 3. 构建并部署 `multiwar` Pages；
-4. 在线验证两位测试玩家能进入同一房间。
+4. 在线验证两位测试玩家能进入同一房间，并确认单人 AI 房间可用。
 
 仓库需要配置以下 GitHub Actions Secrets：
 
