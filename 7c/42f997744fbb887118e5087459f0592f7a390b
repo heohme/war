@@ -1,0 +1,29 @@
+lib/game.ts
+  s_c5cc5ad7c51856::t_fffc2d2c8d71cd 2,82-83,108-121,170-185,408-409,413-421,431
+app/globals.css
+  s_c5cc5ad7c51856::t_2475a929b29b75 408,411
+worker/api.ts
+  s_c5cc5ad7c51856::t_fba1a77d5966b2 243
+app/page.tsx
+  s_c5cc5ad7c51856::t_e4768fed4254cf 18,21,25,29,33,35,38,45,616
+tests/game.test.mjs
+  s_c5cc5ad7c51856::t_ccbad2ed8b1fe2 38,40,44,49,53,57,66-70,72,88
+docs/product.md
+  s_c5cc5ad7c51856::t_67b533b768863c 11,202,204,212,216,218,395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7c42f997744fbb887118e5087459f0592f7a390b",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
