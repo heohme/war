@@ -1,0 +1,83 @@
+/* Chrome 61 baseline. Modern declarations in globals.css enhance these values. */
+:root { --hex-w: 3.2rem; }
+html, body, #root { width: 100%; height: 100%; }
+html { touch-action: manipulation; }
+body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.game-shell { min-height: 100vh; min-height: var(--app-height, 100vh); }
+.game-shell::before, .game-shell::after, .sheet-backdrop, .sheet-dismiss,
+.weapon-art, .weapon-card::after, .guide-visual::before, .guide-visual > img,
+.range-hex::before, .direction-compass { top: 0; right: 0; bottom: 0; left: 0; }
+.brand-bar { top: 0; right: 0; bottom: auto; left: 0; }
+.home-copy h1 { font-size: 4.4rem; }
+.home-copy p { font-size: .9rem; }
+.eyebrow { font-size: .82rem; }
+.match-card { width: 34rem; padding: 1.2rem; }
+.matching-screen h1 { font-size: 2rem; }
+.radar, .avatar, .piece, .remove-choice, .map-direction, .attack-damage,
+.phase-track i, .operation-copy h2 b, .remove-summary > i, .locked-state > i,
+.resolution-track i, .resolution-actor > i, .big-die, .global-actions button,
+.restart-glyph, .weapon-glyph, .range-diagram > footer i, .weapon-art i,
+.season-mark b, .brand-bar strong i, .die-face { height: auto; }
+.radar { height: 8rem; }
+.avatar { height: 3rem; }
+.piece { height: 58%; }
+.map-direction { height: 2.5rem; }
+.global-actions button { height: 2.25rem; }
+.weapon-glyph { height: 3.4rem; }
+.guide-sheet { max-height: 86vh; }
+.weapon-sheet, .feedback-sheet, .restart-sheet { max-height: 92vh; }
+.battle-shell { grid-template-rows: 4.6rem 1fr; grid-template-columns: minmax(0,1fr) 21rem; }
+.operation-panel, .resolution-panel, .result-panel { padding: 1rem; }
+.board-field { padding: 2.5rem 3.8rem; }
+.timer strong { font-size: 1.7rem; }
+.operation-copy h2, .resolution-panel h2 { font-size: 1.2rem; }
+.feedback-sheet { width: 29rem; }
+.restart-sheet { width: 23rem; }
+.weapon-sheet { width: 43rem; }
+.result-panel .primary-action { width: 14rem; }
+.mode-actions.solo-only { grid-template-columns: 1fr; }
+.scroll-container, .feedback-sheet, .weapon-sheet, .guide-sheet {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+.brand-bar { padding-left: 3vw; padding-right: 3vw; }
+.global-actions { top: .65rem; right: .75rem; }
+.home-screen { padding-left: 6vw; padding-right: 6vw; }
+
+.name-field, .weapon-grid, .mode-actions, .matching-screen, .phase-track,
+.attack-weapons, .resolution-track, .battle-log, .feedback-description,
+.feedback-logs > div, .restart-sheet > div, .weapon-sheet-body, .guide-sheet,
+.guide-actions, .weapon-arsenal, .weapon-stack, .weapon-card-copy {
+  grid-gap: .45rem;
+}
+
+.brand-bar strong > * + *, .brand-bar > span > * + *, .player-hud > * + *,
+.player-copy > div > * + *, .health-pips > * + *, .phase-track span > * + *,
+.operation-copy h2 > * + *, .remove-summary > * + *, .direction-choice > * + *,
+.locked-state > * + *, .resolution-track span > * + *, .resolution-actor > * + *,
+.battle-log > div > * + *, .event-progress > * + *, .final-score > * + *,
+.global-actions > * + *, .range-diagram > footer > * + *, .guide-dots > * + *,
+.battle-features > * + *, .loadout-title > * + *, .weapon-column > header > * + *,
+.weapon-card-stats > * + * { margin-left: .4rem; }
+.supports-flex-gap .brand-bar strong > * + *, .supports-flex-gap .brand-bar > span > * + *,
+.supports-flex-gap .player-hud > * + *, .supports-flex-gap .player-copy > div > * + *,
+.supports-flex-gap .health-pips > * + *, .supports-flex-gap .phase-track span > * + *,
+.supports-flex-gap .operation-copy h2 > * + *, .supports-flex-gap .remove-summary > * + *,
+.supports-flex-gap .direction-choice > * + *, .supports-flex-gap .locked-state > * + *,
+.supports-flex-gap .resolution-track span > * + *, .supports-flex-gap .resolution-actor > * + *,
+.supports-flex-gap .battle-log > div > * + *, .supports-flex-gap .event-progress > * + *,
+.supports-flex-gap .final-score > * + *, .supports-flex-gap .global-actions > * + *,
+.supports-flex-gap .range-diagram > footer > * + *, .supports-flex-gap .guide-dots > * + *,
+.supports-flex-gap .battle-features > * + *, .supports-flex-gap .loadout-title > * + *,
+.supports-flex-gap .weapon-column > header > * + *, .supports-flex-gap .weapon-card-stats > * + * { margin-left: 0; }
+
+@media (max-width: 900px) and (orientation: landscape) {
+  :root { --hex-w: 2.65rem; }
+  .home-copy h1 { font-size: 3.2rem; }
+  .match-card { width: 46vw; padding: .75rem; }
+  .battle-shell { grid-template-rows: 3.5rem 1fr; grid-template-columns: minmax(0,1fr) 17rem; }
+  .board-field { padding: 1.35rem 2rem; }
+  .operation-panel, .resolution-panel, .result-panel { padding: .65rem; }
+  .weapon-sheet { width: 92vw; }
+  .guide-sheet { width: 88vw; max-height: 84vh; }
+}

@@ -196,13 +196,13 @@ export const DIRECTIONS: Coord[] = [
 
 export const BOARD_ROWS = [-2, -1, 0, 1, 2] as const;
 
-export const BOARD_CELLS: Coord[] = BOARD_ROWS.flatMap((r) => {
+export const BOARD_CELLS: Coord[] = BOARD_ROWS.reduce<Coord[]>((cells, r) => {
   const half = 4 - Math.abs(r);
-  return Array.from({ length: half * 2 + 1 }, (_, index) => ({
+  return cells.concat(Array.from({ length: half * 2 + 1 }, (_, index) => ({
     q: index - half,
     r,
-  }));
-});
+  })));
+}, []);
 
 export const BOARD_IDS = new Set(BOARD_CELLS.map(cellId));
 
@@ -430,11 +430,13 @@ export function weaponAimCells(weapon: WeaponId, origin: string): AttackCell[] {
   const centralBands = WEAPONS[weapon].pattern.filter(
     (band) => (band.directionOffset ?? 0) === 0 && !band.impactOffset,
   );
-  return DIRECTIONS.flatMap((_, index) => centralBands.map((band) => ({
-    cell: directionCell(origin, index + 1, band.distance),
-    damage: band.damage,
-    direction: index + 1,
-  })));
+  return DIRECTIONS.reduce<AttackCell[]>((cells, _, index) => cells.concat(
+    centralBands.map((band) => ({
+      cell: directionCell(origin, index + 1, band.distance),
+      damage: band.damage,
+      direction: index + 1,
+    })),
+  ), []);
 }
 
 export function attackDamage(
