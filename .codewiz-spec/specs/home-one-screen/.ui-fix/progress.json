@@ -1,0 +1,13 @@
+{
+  "feature": "home-one-screen",
+  "status": "complete",
+  "source": "user_feedback_and_local_measurement",
+  "module_coverage": { "covered": 4, "total": 4 },
+  "fixed_ids": ["UI-001", "UI-002", "UI-003", "UI-004"],
+  "touched_files": ["app/globals.css"],
+  "mount_wiring": "existing_mounts_preserved",
+  "minimal_verify": "passed_lint_tests_build",
+  "visual_check": "passed_932x430_844x390_667x375_740x360_568x320",
+  "finishedAt": "2026-08-31T13:48:00+08:00",
+  "report_path": ".codewiz-spec/specs/home-one-screen/.ui-fix/fix-report.md"
+}

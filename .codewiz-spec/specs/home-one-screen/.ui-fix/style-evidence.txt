@@ -1,0 +1,6 @@
+STYLE_EVIDENCE:
+- n/a | source=user feedback and rendered viewport measurements; no Figma nodeId provided
+ASSET_EVIDENCE:
+- n/a | no asset changes
+RENDER_STRATEGY_EVIDENCE:
+- `.game-shell` | strategy=responsive CSS | dynamic=real | controls=real | existing art direction=preserved

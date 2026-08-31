@@ -2,10 +2,11 @@
 
 :root { --ink:#f5f0e6; --muted:#96a0aa; --panel:rgba(16,22,29,.96); --line:rgba(255,255,255,.1); --gold:#e9b85e; --cyan:#51d1db; --red:#ed6e62; --hex-w:clamp(2.45rem,4.6vw,4.15rem); --hex-h:calc(var(--hex-w)*1.1547); }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { min-height:100%; overscroll-behavior:none; }
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+html,body { width:100%; height:100%; min-height:100%; overflow:hidden; overscroll-behavior:none; }
 body { margin:0; background:#080c11; color:var(--ink); font-family:var(--font-geist-sans),"PingFang SC",sans-serif; }
 button,input,textarea { font:inherit; } button { color:inherit; }
-.game-shell { position:relative; min-height:100svh; overflow:hidden; background:radial-gradient(circle at 48% 55%,rgba(60,75,90,.33),transparent 44%),linear-gradient(135deg,#131b24 0%,#090d12 54%,#121820 100%); }
+.game-shell { position:relative; width:100%; height:100svh; min-height:0; overflow:hidden; background:radial-gradient(circle at 48% 55%,rgba(60,75,90,.33),transparent 44%),linear-gradient(135deg,#131b24 0%,#090d12 54%,#121820 100%); }
 .game-shell::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.09; background-image:linear-gradient(30deg,transparent 48%,#fff 49%,transparent 51%); background-size:1rem 1rem; }
 
 .brand-bar { position:absolute; z-index:2; inset:0 0 auto; height:3.4rem; padding:0 3vw; display:flex; align-items:center; justify-content:space-between; color:#7f8994; font-size:.72rem; letter-spacing:.13em; }
@@ -448,6 +449,8 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .primary-action,.solo-action { min-height:2.65rem; }
 }
 @media (max-height:500px) {
+  .brand-bar { height:3rem; }
+  .home-screen { height:100svh; min-height:0; padding-top:3rem; padding-bottom:.55rem; }
   .home-copy h1 { font-size:2.6rem; }
   .season-mark,.battle-features { display:none; }
   .match-card { padding:.42rem .62rem; }
@@ -464,6 +467,7 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .weapon-card-stats b { font-size:.36rem; }.weapon-card-stats em { display:none; }.weapon-card-stats small { font-size:.32rem; }
   .weapon-card.selected::after { top:.16rem; right:.22rem; font-size:.31rem; }
   .mode-actions { margin-top:.35rem; }.primary-action,.solo-action { height:2.25rem; min-height:0; }
+  .mode-actions .primary-action span,.mode-actions .solo-action span { display:none; }
   .weapon-sheet { width:min(40rem,92vw); }
   .weapon-sheet-hero { min-height:6rem; grid-template-columns:7rem 1fr; }
   .weapon-sheet-hero>img { width:6.5rem; height:5.6rem; }
@@ -477,18 +481,43 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .guide-dots { margin:.45rem 0 .6rem; }
   .guide-actions button { min-height:2.35rem; }
 }
+@media (max-height:370px) {
+  .brand-bar { height:2.7rem; }
+  .home-screen { padding-top:2.65rem; padding-bottom:.25rem; }
+  .weapon-card { height:2.5rem; }
+  .primary-action,.solo-action { height:2.1rem; }
+}
+@media (max-height:340px) {
+  .home-screen { padding-top:2.5rem; padding-bottom:.2rem; }
+  .eyebrow { margin-bottom:.3rem; }
+  .home-copy h1 { font-size:2.2rem; }
+  .home-copy p { display:none; }
+  .match-card { padding:.3rem .48rem; }
+  .name-field input { padding:.25rem .45rem; }
+  .loadout-title { margin:.22rem 0 .18rem; }
+  .weapon-column>header { min-height:1.05rem; padding:.05rem .25rem; }
+  .weapon-stack { gap:.12rem; }
+  .weapon-card { height:2.1rem; padding-left:2.35rem; }
+  .weapon-art { width:2.3rem; }
+  .weapon-card-stats { margin-top:.06rem; padding-top:.06rem; }
+  .mode-actions { margin-top:.22rem; }
+  .primary-action,.solo-action { height:2rem; }
+}
 @media (max-width:900px) and (orientation:landscape) {
+  .brand-bar { padding-left:max(2vw,env(safe-area-inset-left)); }
+  .global-actions { top:max(.55rem,env(safe-area-inset-top)); right:max(.65rem,env(safe-area-inset-right)); }
   .brand-bar>span { display:none; }
-  .home-screen { grid-template-columns:.78fr 1.22fr; gap:3vw; padding-inline:4vw; }
+  .home-screen { grid-template-columns:.78fr 1.22fr; gap:3vw; padding-left:max(4vw,env(safe-area-inset-left)); padding-right:max(4vw,env(safe-area-inset-right)); }
   .home-copy h1 { font-size:clamp(2.4rem,6vw,3.6rem); }
   .home-copy p { max-width:18rem; line-height:1.45; }
   .match-card { width:100%; }
 }
 @media (max-width:760px) and (orientation:landscape) {
-  .brand-bar { padding-inline:2vw; }
+  .brand-bar { padding-left:max(2vw,env(safe-area-inset-left)); padding-right:max(2vw,env(safe-area-inset-right)); }
   .brand-bar>span { display:none; }
-  .home-screen { padding-inline:3vw; grid-template-columns:.7fr 1.3fr; }
-  .home-copy p { font-size:.62rem; }
+  .home-screen { padding-left:max(3vw,env(safe-area-inset-left)); padding-right:max(3vw,env(safe-area-inset-right)); grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr); }
+  .home-copy { min-width:0; }
+  .home-copy p { max-width:100%; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; font-size:.58rem; line-height:1.35; }
   .match-card { border-radius:.25rem; }
 }
 @media (orientation:portrait) {
