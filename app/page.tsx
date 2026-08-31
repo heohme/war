@@ -506,9 +506,9 @@ export default function Home() {
       <header className="brand-bar"><strong><i>MW</i>MULTI·WAR</strong><span><b />六边格预测对战</span></header>
       <section className="home-copy">
         <div className="season-mark"><span>TACTICAL DUEL</span><b>01</b></div>
-        <div className="eyebrow"><i />撤 · 搜 · 打<i /></div>
+        <div className="eyebrow"><i />搜 · 打 · 撤<i /></div>
         <h1>猜中对手的<br /><em>下一步</em></h1>
-        <p>同时秘密规划，依次公开结算。拆路、走位、掷骰攻击，一局约十分钟。</p>
+        <p>搜走位、打预判、撤地砖。双方同时秘密规划，一局约十分钟。</p>
         <div className="battle-features"><span><b>37</b>格动态战场</span><span><b>D6</b>骰运博弈</span><span><b>10′</b>快速对局</span></div>
       </section>
       <section className="match-card">
