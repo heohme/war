@@ -12,6 +12,7 @@ import {
   type WeaponId,
 } from "../lib/game";
 import { sanitizeFeedback, type FeedbackPayload } from "../lib/feedback";
+import { PLANNING_DURATION_MS, resolutionPlaybackDuration } from "../lib/timing";
 
 declare const WebSocketPair: {
   new (): { 0: WebSocket; 1: WebSocket };
@@ -494,7 +495,7 @@ export class GameRoom {
       room.plans[room.botSide] = planBotTurn(room.game, room.botSide);
       room.locks[room.botSide] = { remove: true, move: true, attack: true };
     }
-    room.deadlineAt = Date.now() + 30_000;
+    room.deadlineAt = Date.now() + PLANNING_DURATION_MS;
     room.nextRoundAt = null;
     await this.state.storage.put("room", room);
     await this.state.storage.setAlarm(room.deadlineAt);
@@ -531,7 +532,7 @@ export class GameRoom {
       await this.state.storage.deleteAlarm();
     } else {
       room.status = "resolving";
-      room.nextRoundAt = Date.now() + Math.max(7_000, result.events.length * 950 + 1_800);
+      room.nextRoundAt = Date.now() + resolutionPlaybackDuration(result.events);
       await this.state.storage.setAlarm(room.nextRoundAt);
     }
     await this.state.storage.put("room", room);

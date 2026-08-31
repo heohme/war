@@ -7,6 +7,9 @@ import {
   weaponAimCells, weaponAttackCells, weaponHitChance,
   type GameState, type ResolutionEvent, type Side, type WeaponId,
 } from "../lib/game";
+import {
+  DICE_ROLL_DURATION_MS, PLANNING_DURATION_SECONDS, replayDelay,
+} from "../lib/timing";
 
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
@@ -47,7 +50,7 @@ const WEAPON_GROUPS: Record<WeaponGroup, WeaponId[]> = {
   ranged: ["bow", "staff"],
 };
 const GUIDE_STEPS = [
-  { code: "CORE LOOP", title: "秘密规划，依次揭晓", copy: "双方在 30 秒内各自完成撤、搜、打。确认前对手看不到你的选择，双方完成后才会进入战斗回放。", art: "/assets/guide-loop.webp" },
+  { code: "CORE LOOP", title: "秘密规划，依次揭晓", copy: "双方在 45 秒内各自完成撤、搜、打。确认前对手看不到你的选择，双方确认后立即进入战斗回放。", art: "/assets/guide-loop.webp" },
   { code: "REMOVE", title: "先撤：改变战场", copy: "只能撤除外缘、无人占据且不会切断地图的地块。若双方选择同一块，后结算的一方本次机会作废。", art: "/assets/guide-remove.webp" },
   { code: "MOVE", title: "再搜：预测路线", copy: "每回合最多移动两格。依次点击相邻地块规划路线；如果路线中的砖先被撤掉，你会停在缺口前。", art: "/assets/guide-move.webp" },
   { code: "ATTACK", title: "最后打：武器与骰子", copy: "先选武器，再点击地图上的方向。金色格是攻击范围；掷骰达到武器门槛才会造成图中标注的伤害。", art: "/assets/guide-attack.webp" },
@@ -122,14 +125,6 @@ function phaseOf(event?: ResolutionEvent) {
   if (event.type.startsWith("move")) return "搜";
   if (["attack", "attack_skipped", "attack_missed_range", "die", "damage", "defeated"].includes(event.type)) return "打";
   return "终";
-}
-
-function replayDelay(event?: ResolutionEvent) {
-  if (!event) return 650;
-  if (event.type === "die") return 1_650;
-  if (event.type === "damage" || event.type === "remove") return 1_050;
-  if (event.type === "round_end") return 850;
-  return 900;
 }
 
 function replayEvent(current: GameState, event: ResolutionEvent, after: GameState, isLast: boolean) {
@@ -251,7 +246,7 @@ export default function Home() {
   const [game, setGame] = useState<GameState | null>(null);
   const [locks, setLocks] = useState<Locks>(EMPTY_LOCKS);
   const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(PLANNING_DURATION_SECONDS);
   const [removeCell, setRemoveCell] = useState<string>();
   const [moves, setMoves] = useState<string[]>([]);
   const [attackWeapon, setAttackWeapon] = useState<WeaponId>("sword");
@@ -660,7 +655,7 @@ function AnimatedDie({ event, onSettled }: { event: ResolutionEvent; onSettled: 
     }, 80);
     const settleTimer = setTimeout(() => {
       clearInterval(interval); setFace(roll); setSettled(true); onSettledRef.current();
-    }, 720);
+    }, DICE_ROLL_DURATION_MS);
     return () => { clearInterval(interval); clearTimeout(settleTimer); };
   }, [roll]);
   return <div className={`die-roll ${settled ? "settled" : "rolling"} ${event.hit ? "hit" : "miss"}`}>
