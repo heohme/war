@@ -1,0 +1,31 @@
+docs/product.md
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 99,112,134,290,319,330,377
+docs/architecture.md
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 23,57
+tests/timing.test.mjs
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 1-34
+app/page.tsx
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 10-12,53,249,658
+worker/api.ts
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 15,498,535
+lib/timing.ts
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 1-22
+README.md
+  s_c5cc5ad7c51856::t_fc3b7d82906aee 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b388d336b7d85c890d64aeff1b5f8d72fb9aef54",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
