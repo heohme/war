@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "WAR — 六边格策略对战",
-  description: "撤、搜、打：一局十分钟的六边格预测对战。",
+  description: "搜、打、撤：一局十分钟的六边格预测对战。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

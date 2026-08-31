@@ -29,6 +29,6 @@ test("server renders the Multi War matching page", async () => {
   assert.match(html, /aria-label="重新开始"/);
   assert.match(html, /aria-label="新手引导"/);
   assert.match(html, /aria-label="问题反馈"/);
-  assert.match(html, /撤 · 搜 · 打/);
+  assert.match(html, /搜 · 打 · 撤/);
   assert.doesNotMatch(html, /Building your site|react-loading-skeleton/);
 });
