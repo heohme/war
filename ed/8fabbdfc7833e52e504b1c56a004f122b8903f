@@ -1,0 +1,27 @@
+app/globals.css
+  s_c5cc5ad7c51856::t_7502b869a2d01d 484-505
+  s_c5cc5ad7c51856::t_5470f9a13eea49 5-6,9,452-453,507-508,510,516,518-520
+  s_c5cc5ad7c51856::t_e9555ed80f3853 470
+.codewiz-spec/specs/home-one-screen/.ui-fix/issues.md
+  s_c5cc5ad7c51856::t_74bf356c8babfd 1-42
+.codewiz-spec/specs/home-one-screen/.ui-fix/style-evidence.txt
+  s_c5cc5ad7c51856::t_b5ad288a16fdf1 1-6
+.codewiz-spec/specs/home-one-screen/.ui-fix/walkthrough-raw.md
+  s_c5cc5ad7c51856::t_ddb47abfc2223c 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ed8fabbdfc7833e52e504b1c56a004f122b8903f",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
