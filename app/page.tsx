@@ -25,6 +25,14 @@ const WEAPON_ART: Record<WeaponId, string> = {
   bow: "/assets/weapon-bow.webp",
   staff: "/assets/weapon-staff.webp",
 };
+const WEAPON_THUMB_ART: Record<WeaponId, string> = {
+  sword: "/assets/weapon-sword-thumb.webp",
+  dagger: "/assets/weapon-dagger-thumb.webp",
+  axe: "/assets/weapon-axe-thumb.webp",
+  spear: "/assets/weapon-spear-thumb.webp",
+  bow: "/assets/weapon-bow-thumb.webp",
+  staff: "/assets/weapon-staff-thumb.webp",
+};
 const WEAPON_TRAITS: Record<WeaponId, string> = {
   sword: "均衡 / 近战",
   dagger: "贴身 / 爆发",
@@ -516,7 +524,7 @@ export default function Home() {
                 <button type="button" key={weapon} className={`weapon-card ${weapons.includes(weapon) ? "selected" : ""}`}
                   onClick={() => clickWeapon(weapon)} onPointerDown={() => holdWeapon(weapon)} onPointerUp={clearHold}
                   onPointerLeave={clearHold} onContextMenu={(event) => event.preventDefault()}>
-                  <span className="weapon-art"><img src={WEAPON_ART[weapon]} alt="" draggable={false} /><i>{WEAPON_ICONS[weapon]}</i></span>
+                  <span className="weapon-art"><img src={WEAPON_THUMB_ART[weapon]} alt="" width="320" height="320" decoding="async" draggable={false} /><i>{WEAPON_ICONS[weapon]}</i></span>
                   <span className="weapon-card-copy"><strong>{WEAPONS[weapon].name}</strong><small>{WEAPONS[weapon].role} · {WEAPON_TRAITS[weapon]}</small></span>
                   <span className="weapon-card-desc">{WEAPONS[weapon].description}</span>
                   <span className="weapon-card-stats"><b>范围 {WEAPON_RANGE_SHORT[weapon]}</b><em>伤害 {WEAPONS[weapon].damageLabel}</em><small>{Math.round(weaponHitChance(weapon) * 100)}% 命中</small></span>
@@ -576,7 +584,7 @@ export default function Home() {
         </div>
         {stage === 0 && <div className={`remove-summary ${removeCell ? "has-choice" : ""}`}><i>{removeCell ? "✓" : "—"}</i><span>{removeCell ? `已选择 ${cellName(removeCell)}` : "尚未选择，确认后将跳过"}<small>只可选外缘且撤后地图保持连通的地块</small></span></div>}
         {stage === 1 && <div className="move-summary"><span>{moves.length ? `已走 ${moves.length} / 2 步` : "原地不动也是策略"}</span><button type="button" onClick={() => setMoves((path) => path.slice(0, -1))} disabled={!moves.length}>撤回一步</button></div>}
-        {stage === 2 && <><div className="attack-weapons">{game.players[side].weapons.map((weapon) => <button key={weapon} type="button" onClick={() => setAttackWeapon(weapon)} className={attackWeapon === weapon ? "selected" : ""}><i><img src={WEAPON_ART[weapon]} alt="" draggable={false} /></i><span>{WEAPONS[weapon].name}<small>{WEAPONS[weapon].rangeLabel} · {Math.round(weaponHitChance(weapon) * 100)}%</small></span><b>{WEAPONS[weapon].role}</b></button>)}</div>
+        {stage === 2 && <><div className="attack-weapons">{game.players[side].weapons.map((weapon) => <button key={weapon} type="button" onClick={() => setAttackWeapon(weapon)} className={attackWeapon === weapon ? "selected" : ""}><i><img src={WEAPON_THUMB_ART[weapon]} alt="" width="320" height="320" decoding="async" draggable={false} /></i><span>{WEAPONS[weapon].name}<small>{WEAPONS[weapon].rangeLabel} · {Math.round(weaponHitChance(weapon) * 100)}%</small></span><b>{WEAPONS[weapon].role}</b></button>)}</div>
           <div className="direction-choice"><span>地图点击瞄准</span><strong>{direction} 号方向</strong><small>格内数字为命中后的伤害</small></div></>}
         {stage < 3 && <button type="button" className="confirm-action" onClick={confirmStage}>{stage === 0 ? removeCell ? "确认撤除" : "跳过撤除" : stage === 1 ? moves.length ? "确认路线" : "原地不动" : `用${WEAPONS[attackWeapon].name}攻击 ${direction} 方向`}</button>}
         {stage === 3 && <div className="locked-state"><i>✓</i><span>你的计划已加密提交<small>{locks[opponentSide].attack ? "对手也已就绪" : "等待对手…"}</small></span></div>}
@@ -585,7 +593,7 @@ export default function Home() {
       {screen === "resolving" && <aside className={`resolution-panel event-${activeEvent?.type || "intro"}`}>
         <div className="resolution-kicker"><span>战斗回放</span><b>{Math.max(0, eventIndex + 1)} / {events.length}</b></div>
         <div className="resolution-track">{["撤", "搜", "打"].map((label, index) => <span key={label} className={index < activePhaseIndex ? "done" : index === activePhaseIndex ? "active" : ""}><i>{index < activePhaseIndex ? "✓" : label}</i><small>{label === "撤" ? "地形" : label === "搜" ? "走位" : "交锋"}</small></span>)}</div>
-        <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span>{activeEvent?.weapon && <img src={WEAPON_ART[activeEvent.weapon]} alt={WEAPONS[activeEvent.weapon].name} />}</div>
+        <div className={`resolution-actor ${activeEvent?.side || "neutral"}`}><i>{activeEvent?.side === "cyan" ? "青" : activeEvent?.side === "red" ? "赤" : "!"}</i><span>{activeEvent?.side ? `${sideName(activeEvent.side)}行动` : "秘密计划公开"}<small>{activePhase === "终" ? "回合结束" : `${activePhase}阶段`}</small></span>{activeEvent?.weapon && <img src={WEAPON_THUMB_ART[activeEvent.weapon]} alt={WEAPONS[activeEvent.weapon].name} width="320" height="320" decoding="async" />}</div>
         {activeEvent?.type === "die" ? <AnimatedDie key={activeDieKey} event={activeEvent} onSettled={() => setSettledDieKey(activeDieKey)} /> : <h2>{eventText(activeEvent)}</h2>}
         <div className="battle-log">{recentEvents.map((event, index) => {
           const current = index === recentEvents.length - 1;

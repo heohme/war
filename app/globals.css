@@ -457,15 +457,17 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .match-card-head { display:none; }
   .name-field input { padding:.36rem .55rem; }.loadout-title { margin:.34rem 0 .24rem; }
   .weapon-arsenal { gap:.28rem; }.weapon-column { gap:.24rem; }.weapon-column>header { min-height:1.3rem; padding:.1rem .3rem; }
-  .weapon-column>header small,.weapon-column>header b { font-size:.36rem; }
+  .weapon-column>header small,.weapon-column>header b { font-size:.42rem; }
   .weapon-stack { gap:.2rem; }
   .weapon-card { height:2.55rem; min-height:0; padding:.16rem .35rem .14rem 2.7rem; }
   .weapon-art { width:2.62rem; }
   .weapon-card-desc { display:none; }
-  .weapon-card-copy strong { font-size:.59rem; }.weapon-card-copy small { font-size:.34rem; }
-  .weapon-card-stats { margin-top:.12rem; padding-top:.11rem; gap:.24rem; }
-  .weapon-card-stats b { font-size:.36rem; }.weapon-card-stats em { display:none; }.weapon-card-stats small { font-size:.32rem; }
-  .weapon-card.selected::after { top:.16rem; right:.22rem; font-size:.31rem; }
+  .weapon-card-copy strong { font-size:.63rem; line-height:1.05; }.weapon-card-copy small { display:none; }
+  .weapon-card-stats { margin-top:.16rem; padding-top:0; gap:.24rem; border-top:0; line-height:1; }
+  .weapon-card-stats>* { white-space:nowrap; }
+  .weapon-card-stats b,.weapon-card-stats em,.weapon-card-stats small { margin-left:0; color:#899499; font-size:.43rem; }
+  .weapon-card.selected::after { top:.16rem; right:.22rem; font-size:.37rem; }
+  .weapon-card.selected .weapon-card-stats em,.weapon-card.selected .weapon-card-stats small { color:#bda36f; }
   .mode-actions { margin-top:.35rem; }.primary-action,.solo-action { height:2.25rem; min-height:0; }
   .mode-actions .primary-action span,.mode-actions .solo-action span { display:none; }
   .weapon-sheet { width:min(40rem,92vw); }
@@ -500,10 +502,15 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .weapon-card { height:2.1rem; padding-left:2.35rem; }
   .weapon-art { width:2.3rem; }
   .weapon-card-stats { margin-top:.06rem; padding-top:.06rem; }
+  .weapon-card-stats em { display:none; }
+  .weapon-card-stats b,.weapon-card-stats small { font-size:.46rem; }
+  .weapon-card-stats small { margin-left:auto; }
   .mode-actions { margin-top:.22rem; }
   .primary-action,.solo-action { height:2rem; }
 }
 @media (max-width:900px) and (orientation:landscape) {
+  .game-shell::before { background-image:url("/assets/battlefield-mobile.webp"); }
+  .guide-backdrop { background:linear-gradient(90deg,rgba(2,5,8,.9),rgba(2,5,8,.74)),url("/assets/battlefield-mobile.webp") center/cover no-repeat; }
   .brand-bar { padding-left:max(2vw,env(safe-area-inset-left)); }
   .global-actions { top:max(.55rem,env(safe-area-inset-top)); right:max(.65rem,env(safe-area-inset-right)); }
   .brand-bar>span { display:none; }

@@ -1,0 +1,7 @@
+STYLE_EVIDENCE:
+- n/a | source=user feedback and production viewport inspection; no Figma nodeId provided
+ASSET_EVIDENCE:
+- `public/assets/weapon-*-thumb.webp` | 320 × 320 WebP | compact card/attack/replay art
+- `public/assets/battlefield-mobile.webp` | 960 × 540 WebP | mobile landscape background
+RENDER_STRATEGY_EVIDENCE:
+- `.weapon-card` | strategy=responsive CSS + responsive asset | dynamic=real | controls=real | existing art direction=preserved
