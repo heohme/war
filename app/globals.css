@@ -255,9 +255,6 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .home-screen { padding-inline:5vw; grid-template-columns:.9fr 1.1fr; } .home-copy p { max-width:18rem; line-height:1.45; }
   .match-card { width:45vw; border-radius:1rem; } .loadout-title small { display:none; } .mode-actions { gap:.35rem; }
 }
-@media (orientation:portrait) {
-  .game-shell::before { content:"请旋转手机\A横屏才能进入战场"; white-space:pre; position:fixed; inset:0; z-index:100; display:grid; place-items:center; text-align:center; line-height:1.8; background:#090d12; color:var(--gold); letter-spacing:.08em; }
-}
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
 
 /* Game art direction: tactical stone, brass command surfaces, cyan/red faction light. */
@@ -527,6 +524,148 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .home-copy p { max-width:100%; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; font-size:.58rem; line-height:1.35; }
   .match-card { border-radius:.25rem; }
 }
-@media (orientation:portrait) {
-  .game-shell::before { content:"请旋转手机\A横屏才能进入战场"; white-space:pre; position:fixed; inset:0; z-index:100; display:grid; place-items:center; text-align:center; line-height:1.8; background:linear-gradient(rgba(5,9,13,.64),rgba(5,9,13,.64)),url("/assets/battlefield.webp") center/cover no-repeat; color:var(--gold); letter-spacing:.08em; filter:none; transform:none; }
+/* Portrait and foldable layouts: stack the board above the command surface.
+   The aspect-ratio branch also catches square screens reported as landscape. */
+@media (orientation:portrait), (max-aspect-ratio:5/4) {
+  :root { --hex-w:2.25rem; }
+  .game-shell::before { content:""; position:absolute; z-index:-2; inset:0; display:block; white-space:normal; background:url("/assets/battlefield-mobile.webp") center/cover no-repeat; color:inherit; filter:saturate(.78) brightness(.54); transform:scale(1.015); }
+  .brand-bar { height:3.15rem; padding-left:.75rem; padding-right:6.5rem; padding-left:max(.75rem,env(safe-area-inset-left)); font-size:.56rem; }
+  .brand-bar>span { display:none; }
+  .global-actions { top:.42rem; right:.5rem; right:max(.5rem,env(safe-area-inset-right)); gap:.22rem; }
+  .global-actions button { width:1.85rem; height:1.85rem; }
+
+  .home-screen { height:100vh; height:100svh; min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); align-content:start; gap:.65rem; padding:3.35rem .75rem .75rem; padding-left:max(.75rem,env(safe-area-inset-left)); padding-right:max(.75rem,env(safe-area-inset-right)); padding-bottom:max(.75rem,env(safe-area-inset-bottom)); overflow-y:auto; }
+  .home-copy { width:min(100%,40rem); justify-self:center; text-align:center; }
+  .season-mark,.battle-features { display:none; }
+  .eyebrow { margin-bottom:.25rem; font-size:.62rem; }
+  .home-copy h1 { font-size:clamp(2rem,8vw,3.15rem); line-height:.94; letter-spacing:-.06em; }
+  .home-copy p { max-width:32rem; margin:.45rem auto 0; font-size:.66rem; line-height:1.45; }
+  .match-card { width:min(100%,40rem); justify-self:center; align-self:start; padding:.7rem; border-radius:.35rem; }
+  .match-card-head { padding-bottom:.45rem; margin-bottom:.45rem; }
+  .name-field input { padding:.5rem .6rem; }
+  .loadout-title { margin:.5rem 0 .32rem; }
+  .weapon-arsenal { gap:.32rem; }
+  .weapon-column { gap:.25rem; }
+  .weapon-column>header { min-height:1.55rem; padding:.15rem .3rem; }
+  .weapon-stack { gap:.22rem; }
+  .weapon-card { height:3.05rem; min-height:0; padding:.27rem .3rem .22rem 3.15rem; }
+  .weapon-art { width:3.05rem; }
+  .weapon-card-desc { display:none; }
+  .weapon-card-copy strong { font-size:.64rem; line-height:1.05; }
+  .weapon-card-copy small { font-size:.42rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .weapon-card-stats { gap:.25rem; margin-top:.18rem; padding-top:.16rem; }
+  .weapon-card-stats b,.weapon-card-stats em,.weapon-card-stats small { margin-left:0; font-size:.4rem; white-space:nowrap; }
+  .weapon-card-stats em { display:none; }
+  .mode-actions { margin-top:.5rem; }
+  .primary-action,.solo-action { min-height:2.75rem; }
+
+  .battle-shell { height:100vh; height:100svh; grid-template-columns:1fr; grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42vh); grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42svh); }
+  .battle-header { grid-column:1; grid-row:1; grid-template-columns:1fr 1fr; grid-template-rows:1.45rem 1fr; gap:0 .45rem; padding:.22rem .55rem .38rem; padding-left:max(.55rem,env(safe-area-inset-left)); padding-right:max(.55rem,env(safe-area-inset-right)); }
+  .round-counter { grid-column:1/-1; grid-row:1; min-width:0; padding:0; border:0; background:transparent; }
+  .round-counter>span { display:none; }
+  .round-counter strong { font-size:.86rem; }
+  .round-counter small { display:inline-block; margin-left:.38rem; font-size:.43rem; }
+  .player-hud { grid-column:1; grid-row:2; gap:.4rem; }
+  .player-hud.red { grid-column:2; }
+  .avatar { width:2rem; height:2rem; }
+  .player-copy strong { max-width:28vw; font-size:.67rem; }
+  .player-copy span { font-size:.43rem; }
+  .health-pips { margin-top:.2rem; }
+  .health-pips i { width:clamp(.58rem,4vw,1rem); }
+  .battle-stage { grid-column:1; grid-row:2; }
+  .board-field { padding:1.25rem 1rem .85rem; }
+  .direction-compass { inset:.15rem .8rem; }
+  .map-direction { width:1.9rem; height:1.9rem; }
+  .map-direction small { display:none; }
+
+  .operation-panel,.resolution-panel,.result-panel { grid-column:1; grid-row:3; min-width:0; border-left:0; border-top:1px solid var(--line-strong); padding:.62rem .75rem; padding-bottom:max(.62rem,env(safe-area-inset-bottom)); box-shadow:0 -1.1rem 3rem rgba(0,0,0,.3); }
+  .operation-panel { overflow-y:auto; }
+  .phase-track { padding-right:3.4rem; }
+  .timer { top:.38rem; right:.72rem; }
+  .timer strong { font-size:1.25rem; }
+  .operation-copy { margin-top:.42rem; padding-right:0; }
+  .operation-copy h2 { margin:.14rem 0 .25rem; font-size:1rem; }
+  .operation-copy p { font-size:.59rem; line-height:1.4; }
+  .remove-summary,.move-summary { margin-top:.48rem; padding:.46rem .55rem; }
+  .attack-weapons { margin-top:.45rem; }
+  .attack-weapons button { padding:.36rem; }
+  .direction-choice { margin-top:.38rem; padding:.42rem .5rem; }
+  .confirm-action { min-height:2.55rem; }
+  .resolution-track { margin-top:.42rem; }
+  .resolution-actor { margin-top:.48rem; }
+  .resolution-panel h2 { min-height:auto; margin:.5rem 0; }
+  .battle-log { min-height:2.85rem; }
+  .die-roll .big-die { width:3.75rem; }
+  .result-panel { justify-content:center; }
+  .connection-note,.toast { max-width:calc(100vw - 1rem); bottom:calc(42vh + .5rem); }
+
+  .guide-backdrop { background:linear-gradient(rgba(2,5,8,.86),rgba(2,5,8,.82)),url("/assets/battlefield-mobile.webp") center/cover no-repeat; }
+  .guide-sheet { width:min(94vw,38rem); max-height:92vh; max-height:92svh; grid-template-columns:1fr; overflow-y:auto; }
+  .guide-visual { height:12rem; aspect-ratio:auto; border-right:0; border-bottom:1px solid var(--line-strong); }
+  .guide-copy { padding:.85rem 1rem 1rem; }
+  .guide-copy h2 { margin:.25rem 0 .45rem; font-size:1.22rem; }
+  .guide-copy p { min-height:0; font-size:.64rem; line-height:1.55; }
+  .guide-dots { margin:.55rem 0 .7rem; }
+  .weapon-sheet { width:min(94vw,38rem); max-height:92vh; max-height:92svh; overflow-y:auto; }
+  .weapon-sheet-hero { min-height:7.5rem; grid-template-columns:7.6rem 1fr; padding:.7rem 2.6rem .7rem .35rem; }
+  .weapon-sheet-hero>img { width:7.4rem; height:6.7rem; }
+  .weapon-sheet-hero h2 { font-size:1.28rem; }
+  .weapon-sheet-body { grid-template-columns:1fr; }
+  .feedback-sheet,.restart-sheet { width:min(92vw,29rem); }
+}
+
+@media (orientation:portrait) and (max-width:430px) {
+  :root { --hex-w:2.08rem; }
+  .match-card-head { display:none; }
+  .home-copy h1 br { display:none; }
+  .loadout-title small { display:none; }
+  .weapon-card-copy small { display:none; }
+  .mode-actions .primary-action span,.mode-actions .solo-action span { display:none; }
+}
+
+@media (min-aspect-ratio:4/5) and (max-aspect-ratio:5/4) and (min-width:521px) {
+  :root { --hex-w:2.65rem; }
+  .home-copy h1 { font-size:2.65rem; }
+  .guide-visual { height:14rem; }
+}
+
+@media (min-aspect-ratio:4/5) and (max-aspect-ratio:5/4) and (max-width:520px) {
+  :root { --hex-w:2.05rem; }
+}
+
+@media (min-aspect-ratio:4/5) and (max-aspect-ratio:5/4) and (max-height:560px) {
+  :root { --hex-w:1.78rem; }
+  .game-shell { overflow:hidden; }
+  .battle-shell { height:100vh; height:100svh; grid-template-rows:3.65rem minmax(0,1fr) 13.7rem; }
+  .battle-header { grid-template-rows:1.05rem 1fr; padding:.08rem .45rem .22rem; }
+  .round-counter strong { font-size:.72rem; }
+  .round-counter small { font-size:.38rem; }
+  .avatar { width:1.55rem; height:1.55rem; }
+  .player-copy strong { font-size:.58rem; }
+  .player-copy span { font-size:.37rem; }
+  .health-pips { margin-top:.08rem; }
+  .health-pips i { height:.14rem; }
+  .board-field { padding:.55rem .65rem .35rem; }
+  .direction-compass { inset:.05rem .45rem; }
+  .map-direction { width:1.55rem; height:1.55rem; }
+  .operation-panel,.resolution-panel,.result-panel { padding:.35rem .6rem; overflow-y:hidden; }
+  .phase-track { padding-right:2.8rem; }
+  .timer { top:.18rem; right:.58rem; }
+  .timer strong { font-size:1rem; }
+  .operation-copy { margin-top:.18rem; }
+  .operation-copy h2 { margin:.05rem 0 .14rem; font-size:.85rem; }
+  .operation-copy p { overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:.52rem; line-height:1.28; }
+  .operation-copy.stage-2 p { display:none; }
+  .remove-summary,.move-summary { margin-top:.25rem; padding:.28rem .42rem; }
+  .attack-weapons { gap:.28rem; margin-top:.22rem; }
+  .attack-weapons button { min-height:2.55rem; padding:.2rem .28rem; }
+  .attack-weapons button>i { width:1.7rem; height:1.7rem; }
+  .attack-weapons button>b { display:none; }
+  .direction-choice { margin-top:.22rem; padding:.24rem .4rem; }
+  .confirm-action { min-height:2.25rem; margin-top:.2rem; }
+  .resolution-track { margin-top:.18rem; }
+  .resolution-actor { margin-top:.24rem; padding:.3rem .4rem; }
+  .resolution-panel h2 { margin:.25rem 0; font-size:.95rem; }
+  .battle-log { min-height:2.2rem; padding:.35rem; }
+  .die-roll .big-die { width:3.1rem; margin-top:.2rem; }
 }
