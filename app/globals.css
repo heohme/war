@@ -534,7 +534,7 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .global-actions { top:.42rem; right:.5rem; right:max(.5rem,env(safe-area-inset-right)); gap:.22rem; }
   .global-actions button { width:1.85rem; height:1.85rem; }
 
-  .home-screen { height:100vh; height:100svh; min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); align-content:start; gap:.65rem; padding:3.35rem .75rem .75rem; padding-left:max(.75rem,env(safe-area-inset-left)); padding-right:max(.75rem,env(safe-area-inset-right)); padding-bottom:max(.75rem,env(safe-area-inset-bottom)); overflow-y:auto; }
+  .home-screen { height:100vh; height:var(--app-height,100vh); height:100svh; min-height:0; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); align-content:start; gap:.65rem; padding:3.35rem .75rem .75rem; padding-left:max(.75rem,env(safe-area-inset-left)); padding-right:max(.75rem,env(safe-area-inset-right)); padding-bottom:max(.75rem,env(safe-area-inset-bottom)); overflow-y:auto; }
   .home-copy { width:min(100%,40rem); justify-self:center; text-align:center; }
   .season-mark,.battle-features { display:none; }
   .eyebrow { margin-bottom:.25rem; font-size:.62rem; }
@@ -559,7 +559,7 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .mode-actions { margin-top:.5rem; }
   .primary-action,.solo-action { min-height:2.75rem; }
 
-  .battle-shell { height:100vh; height:100svh; grid-template-columns:1fr; grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42vh); grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42svh); }
+  .battle-shell { height:100vh; height:var(--app-height,100vh); height:100svh; grid-template-columns:1fr; grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42vh); grid-template-rows:4.8rem minmax(0,1fr) minmax(16.5rem,42svh); }
   .battle-header { grid-column:1; grid-row:1; grid-template-columns:1fr 1fr; grid-template-rows:1.45rem 1fr; gap:0 .45rem; padding:.22rem .55rem .38rem; padding-left:max(.55rem,env(safe-area-inset-left)); padding-right:max(.55rem,env(safe-area-inset-right)); }
   .round-counter { grid-column:1/-1; grid-row:1; min-width:0; padding:0; border:0; background:transparent; }
   .round-counter>span { display:none; }
@@ -636,7 +636,7 @@ button,input,textarea { font:inherit; } button { color:inherit; }
 @media (min-aspect-ratio:4/5) and (max-aspect-ratio:5/4) and (max-height:560px) {
   :root { --hex-w:1.78rem; }
   .game-shell { overflow:hidden; }
-  .battle-shell { height:100vh; height:100svh; grid-template-rows:3.65rem minmax(0,1fr) 13.7rem; }
+  .battle-shell { height:100vh; height:var(--app-height,100vh); height:100svh; grid-template-rows:3.65rem minmax(0,1fr) 13.7rem; }
   .battle-header { grid-template-rows:1.05rem 1fr; padding:.08rem .45rem .22rem; }
   .round-counter strong { font-size:.72rem; }
   .round-counter small { font-size:.38rem; }

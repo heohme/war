@@ -81,3 +81,63 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
   .weapon-sheet { width: 92vw; }
   .guide-sheet { width: 88vw; max-height: 84vh; }
 }
+
+/* Portrait baseline for the mini-tool's oldest supported WebView (Chrome 61).
+   globals.css enhances these values on newer engines; none of these rules gate play. */
+@media (orientation: portrait), (max-aspect-ratio: 5/4) {
+  :root { --hex-w: 2.08rem; }
+  .game-shell::before {
+    content: "";
+    display: block;
+    background: url("/assets/battlefield-mobile.webp") center / cover no-repeat;
+  }
+  .home-screen {
+    width: 100%;
+    height: 100vh;
+    height: var(--app-height, 100vh);
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 3.35rem .75rem .75rem;
+    overflow-y: auto;
+  }
+  .home-copy, .match-card { width: 100%; max-width: 40rem; }
+  .home-copy { justify-self: center; text-align: center; }
+  .home-copy h1 { font-size: 2.4rem; }
+  .match-card { justify-self: center; align-self: start; }
+  .weapon-arsenal { grid-template-columns: 1fr 1fr; }
+  .weapon-card { height: 3.05rem; min-height: 0; }
+
+  .battle-shell {
+    width: 100%;
+    height: 100vh;
+    height: var(--app-height, 100vh);
+    grid-template-columns: 1fr;
+    grid-template-rows: 4.8rem minmax(0, 1fr) 16.5rem;
+  }
+  .battle-header { grid-column: 1; grid-row: 1; }
+  .battle-stage { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; }
+  .operation-panel, .resolution-panel, .result-panel {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0;
+    min-height: 0;
+    border-left: 0;
+    overflow-y: auto;
+  }
+  .match-card, .operation-panel, .resolution-panel, .result-panel,
+  .guide-sheet, .weapon-sheet, .feedback-sheet, .restart-sheet {
+    -webkit-overflow-scrolling: touch;
+  }
+  .guide-sheet, .weapon-sheet { width: 94vw; max-width: 38rem; max-height: 92vh; }
+  .feedback-sheet, .restart-sheet { width: 92vw; }
+}
+
+@media (min-aspect-ratio: 4/5) and (max-aspect-ratio: 5/4) and (max-height: 560px) {
+  :root { --hex-w: 1.78rem; }
+  .battle-shell {
+    grid-template-rows: 3.65rem minmax(0, 1fr) 13.7rem;
+    height: 100vh;
+    height: var(--app-height, 100vh);
+  }
+}
