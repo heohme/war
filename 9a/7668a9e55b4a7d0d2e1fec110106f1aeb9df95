@@ -1,0 +1,21 @@
+app/globals.css
+  s_c5cc5ad7c51856::t_6adee9d2024c3a 527-636
+  s_c5cc5ad7c51856::t_7934edf5299d11 658,660-665
+  s_c5cc5ad7c51856::t_25024c580ef746 637-657,659,666-670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9a7668a9e55b4a7d0d2e1fec110106f1aeb9df95",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
