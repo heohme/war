@@ -1,0 +1,19 @@
+scripts/package-minitool.mjs
+  s_c5cc5ad7c51856::t_34a4ac8282ed9e 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f307a15201f5d9cb6ca114263cedaebcecb6be06",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
