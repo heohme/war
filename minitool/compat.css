@@ -25,7 +25,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .global-actions button { height: 2.25rem; }
 .weapon-glyph { height: 3.4rem; }
 .guide-sheet { max-height: 86vh; }
-.weapon-sheet, .feedback-sheet, .restart-sheet { max-height: 92vh; }
+.weapon-sheet, .feedback-sheet, .restart-sheet, .result-share-sheet { max-height: 92vh; }
 .battle-shell { grid-template-rows: 4.6rem 1fr; grid-template-columns: minmax(0,1fr) 21rem; }
 .operation-panel, .resolution-panel, .result-panel { padding: 1rem; }
 .board-field { padding: 2.5rem 3.8rem; }
@@ -34,7 +34,10 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .feedback-sheet { width: 29rem; }
 .restart-sheet { width: 23rem; }
 .weapon-sheet { width: 43rem; }
-.result-panel .primary-action, .result-secondary { width: 100%; }
+.result-panel .primary-action, .result-share-action, .result-secondary { width: 100%; }
+.result-share-sheet { width: 46rem; }
+.result-share-preview { height: 32rem; }
+.result-share-preview img { -webkit-touch-callout: default !important; -webkit-user-select: auto !important; user-select: auto !important; }
 .mode-actions.solo-only { grid-template-columns: 1fr; }
 .scroll-container, .feedback-sheet, .weapon-sheet, .guide-sheet {
   -webkit-overflow-scrolling: touch;
@@ -80,6 +83,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
   .operation-panel, .resolution-panel, .result-panel { padding: .65rem; }
   .weapon-sheet { width: 92vw; }
   .guide-sheet { width: 88vw; max-height: 84vh; }
+  .result-share-preview { width: auto; height: 70vh; }
 }
 
 /* Portrait baseline for the mini-tool's oldest supported WebView (Chrome 61).
@@ -131,7 +135,8 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
     -webkit-overflow-scrolling: touch;
   }
   .guide-sheet, .weapon-sheet { width: 94vw; max-width: 38rem; max-height: 92vh; }
-  .feedback-sheet, .restart-sheet { width: 92vw; }
+  .feedback-sheet, .restart-sheet, .result-share-sheet { width: 92vw; }
+  .result-share-preview { width: auto; height: 46vh; }
 }
 
 @media (min-aspect-ratio: 4/5) and (max-aspect-ratio: 5/4) and (max-height: 560px) {

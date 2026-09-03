@@ -14,6 +14,8 @@ import {
   addResolutionEvents, createMatchStats, primaryWeapon, resultSummary, resultTitle,
   type MatchStats,
 } from "../lib/match-summary";
+import { createResultCard } from "../lib/result-card";
+import { ResultShareSheet, type ResultShareStatus } from "../components/ResultShareSheet";
 
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
@@ -270,6 +272,9 @@ export default function Home() {
   const [guideStep, setGuideStep] = useState(0);
   const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
   const [matchStats, setMatchStats] = useState<MatchStats>(createMatchStats);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
+  const [shareCardStatus, setShareCardStatus] = useState<ResultShareStatus>("generating");
+  const [shareCardUrl, setShareCardUrl] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -567,6 +572,34 @@ export default function Home() {
   const opponentSide = opponent(side);
   const winnerText = game.winner === "draw" ? "平局" : game.winner === side ? "你赢了" : "对手获胜";
   const resultWeapon = primaryWeapon(matchStats, game.players[side].weapons[0]);
+  const generateShareCard = async () => {
+    if (!game.winner) return;
+    setShareCardOpen(true); setShareCardStatus("generating"); setShareCardUrl("");
+    try {
+      const imageUrl = await createResultCard({
+        outcome: game.winner === side ? "win" : game.winner === "draw" ? "draw" : "loss",
+        outcomeText: winnerText,
+        title: resultTitle(matchStats, game.winner, side),
+        summary: resultSummary(matchStats, resultWeapon),
+        modeLabel: matchMode === "solo" ? "AI 挑战" : "1V1 对战",
+        round: game.round,
+        playerName: game.players[side].name || "旅行者",
+        opponentName: matchMode === "solo" ? "AI" : game.players[opponentSide].name || "对手",
+        weaponName: WEAPONS[resultWeapon].name,
+        weaponImage: WEAPON_ART[resultWeapon],
+        weaponUses: matchStats.weaponUses[resultWeapon],
+        ownHealth: game.players[side].health,
+        opponentHealth: game.players[opponentSide].health,
+        stats: matchStats,
+        footer: matchMode === "solo" ? "小红书小工具搜索「搜打撤」" : "multiwar.pages.dev",
+      });
+      setShareCardUrl(imageUrl); setShareCardStatus("ready");
+      recordActivity("战报", "生成本局战报图片");
+    } catch {
+      setShareCardStatus("error");
+      recordActivity("战报", "战报图片生成失败");
+    }
+  };
   return (
     <main className={`game-shell battle-shell ${screen}`}>
       {commonOverlay}
@@ -624,8 +657,10 @@ export default function Home() {
           <span><b>{matchStats.maxRoll || "—"}</b><small>最高骰点</small></span>
         </div>
         <div className="final-score"><span>你 {game.players[side].health} HP</span><i>:</i><span>{matchMode === "solo" ? "AI" : "对手"} {game.players[opponentSide].health} HP</span></div>
-        <div className="result-actions"><button type="button" className="primary-action" onClick={playAgain}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
+        <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>生成战报</button><button type="button" className="primary-action" onClick={playAgain}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
       </aside>}
+      {shareCardOpen && <ResultShareSheet status={shareCardStatus} imageUrl={shareCardUrl}
+        filename={`soudache-report-round-${game.round}.png`} onRetry={generateShareCard} onClose={() => setShareCardOpen(false)} />}
       {!opponentConnected && <div className="connection-note">对手暂时离线，房间会为其保留</div>}
       {notice && <button className="toast" onClick={() => credential && connectRoom(credential)}>{notice}</button>}
     </main>
