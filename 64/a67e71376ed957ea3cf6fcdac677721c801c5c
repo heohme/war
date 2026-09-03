@@ -1,0 +1,33 @@
+minitool/compat.css
+  s_c5cc5ad7c51856::t_cb8b374eb283b4 21-22,66,78
+lib/result-card.ts
+  s_c5cc5ad7c51856::t_3315d3a91352b9 8-11,189-201,207,219-223
+tests/match-summary.test.mjs
+  s_c5cc5ad7c51856::t_3315d3a91352b9 3,28-38,48
+scripts/package-minitool.mjs
+  s_c5cc5ad7c51856::t_a2230dbf87bc83 8
+lib/match-summary.ts
+  s_c5cc5ad7c51856::t_3315d3a91352b9 14-27,95-145
+minitool/App.tsx
+  s_c5cc5ad7c51856::t_cf3090b6cfe47f 14,512,522-525,591,593-595,598
+app/page.tsx
+  s_c5cc5ad7c51856::t_cf3090b6cfe47f 14,575,585-588,654,656-658,661
+app/globals.css
+  s_c5cc5ad7c51856::t_0ac6ae42941e2c 178-183,185,188,191-193,195-196,199-203,217-218,240-242,675,733-736,742
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "64a67e71376ed957ea3cf6fcdac677721c801c5c",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
