@@ -10,6 +10,10 @@ import {
 import {
   DICE_ROLL_DURATION_MS, PLANNING_DURATION_SECONDS, replayDelay,
 } from "../lib/timing";
+import {
+  addResolutionEvents, createMatchStats, primaryWeapon, resultSummary, resultTitle,
+  type MatchStats,
+} from "../lib/match-summary";
 
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
@@ -265,6 +269,7 @@ export default function Home() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
   const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
+  const [matchStats, setMatchStats] = useState<MatchStats>(createMatchStats);
   const socketRef = useRef<WebSocket | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -313,6 +318,7 @@ export default function Home() {
       if (data.type === "connection" && data.side === opponent(next.side)) setOpponentConnected(data.connected);
       if (data.type === "resolution") {
         setGame(data.before); setResolutionAfter(data.after); setEvents(data.events); setEventIndex(-1); setDeadlineAt(null);
+        setMatchStats((current) => addResolutionEvents(current, data.events as ResolutionEvent[], next.side));
         for (const event of (data.events as ResolutionEvent[]).slice(-12)) recordActivity("结算", eventText(event));
         setScreen("resolving");
       }
@@ -371,6 +377,7 @@ export default function Home() {
   const match = (mode: "pvp" | "solo" = "pvp") => {
     const playerId = getPlayerId();
     setMatchMode(mode);
+    setMatchStats(createMatchStats());
     recordActivity("匹配", mode === "solo" ? "开始单人测试" : "开始在线匹配");
     localStorage.setItem("multiwar-name", name.trim() || "旅行者");
     sessionStorage.removeItem("multiwar-room"); socketRef.current?.close(); setScreen("matching");
@@ -431,6 +438,11 @@ export default function Home() {
     recordActivity("对局", "离开当前进度并返回主页");
     socketRef.current?.close(1000, "leave"); sessionStorage.removeItem("multiwar-room");
     setCredential(null); setGame(null); setLocks(EMPTY_LOCKS); setEvents([]); setResolutionAfter(null); resetDraft(); setScreen("home");
+  };
+
+  const playAgain = () => {
+    recordActivity("对局", matchMode === "solo" ? "再次挑战 AI" : "再次进入在线匹配");
+    match(matchMode);
   };
 
   const confirmRestart = () => {
@@ -554,6 +566,7 @@ export default function Home() {
   const recentEvents = events.slice(Math.max(0, eventIndex - 2), eventIndex + 1);
   const opponentSide = opponent(side);
   const winnerText = game.winner === "draw" ? "平局" : game.winner === side ? "你赢了" : "对手获胜";
+  const resultWeapon = primaryWeapon(matchStats, game.players[side].weapons[0]);
   return (
     <main className={`game-shell battle-shell ${screen}`}>
       {commonOverlay}
@@ -599,9 +612,19 @@ export default function Home() {
         <p>只播放双方的公开结算，播放完成后自动进入下一回合</p>
       </aside>}
 
-      {screen === "finished" && <aside className="result-panel"><small>对局结束</small><h1>{winnerText}</h1>
-        <div className="final-score"><span>{game.players[side].health} HP</span><i>:</i><span>{game.players[opponentSide].health} HP</span></div>
-        <button type="button" className="primary-action" onClick={leaveGame}>返回匹配</button>
+      {screen === "finished" && <aside className={`result-panel ${game.winner === side ? "is-win" : game.winner === "draw" ? "is-draw" : "is-loss"}`}>
+        <div className="result-kicker"><span>MATCH REPORT</span><b>{matchMode === "solo" ? "AI 挑战" : "1V1 对战"}</b></div>
+        <div className="result-outcome"><i>{game.winner === side ? "胜" : game.winner === "draw" ? "和" : "败"}</i><div><small>第 {game.round} 回合结束</small><h1>{winnerText}</h1></div></div>
+        <div className="result-title"><strong>{resultTitle(matchStats, game.winner, side)}</strong><span>{resultSummary(matchStats, resultWeapon)}</span></div>
+        <div className="result-weapon"><img src={WEAPON_THUMB_ART[resultWeapon]} alt="" width="320" height="320" decoding="async" /><span><small>主力武器</small><b>{WEAPONS[resultWeapon].name}</b></span><em>使用 {matchStats.weaponUses[resultWeapon]} 次</em></div>
+        <div className="result-stats">
+          <span><b>{game.round}</b><small>交战回合</small></span>
+          <span><b>{matchStats.hits}/{matchStats.diceRolls}</b><small>骰子命中</small></span>
+          <span><b>{matchStats.damage}</b><small>累计伤害</small></span>
+          <span><b>{matchStats.maxRoll || "—"}</b><small>最高骰点</small></span>
+        </div>
+        <div className="final-score"><span>你 {game.players[side].health} HP</span><i>:</i><span>{matchMode === "solo" ? "AI" : "对手"} {game.players[opponentSide].health} HP</span></div>
+        <div className="result-actions"><button type="button" className="primary-action" onClick={playAgain}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
       </aside>}
       {!opponentConnected && <div className="connection-note">对手暂时离线，房间会为其保留</div>}
       {notice && <button className="toast" onClick={() => credential && connectRoom(credential)}>{notice}</button>}

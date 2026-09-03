@@ -34,7 +34,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .feedback-sheet { width: 29rem; }
 .restart-sheet { width: 23rem; }
 .weapon-sheet { width: 43rem; }
-.result-panel .primary-action { width: 14rem; }
+.result-panel .primary-action, .result-secondary { width: 100%; }
 .mode-actions.solo-only { grid-template-columns: 1fr; }
 .scroll-container, .feedback-sheet, .weapon-sheet, .guide-sheet {
   -webkit-overflow-scrolling: touch;
@@ -115,6 +115,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
     grid-template-columns: 1fr;
     grid-template-rows: 4.8rem minmax(0, 1fr) 16.5rem;
   }
+  .battle-shell.finished { grid-template-rows: 4.8rem minmax(8.5rem, 27vh) minmax(0, 1fr); }
   .battle-header { grid-column: 1; grid-row: 1; }
   .battle-stage { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; }
   .operation-panel, .resolution-panel, .result-panel {
@@ -140,4 +141,5 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
     height: 100vh;
     height: var(--app-height, 100vh);
   }
+  .battle-shell.finished { grid-template-rows: 3.65rem minmax(7rem, 22vh) minmax(0, 1fr); }
 }
