@@ -11,7 +11,7 @@ import {
   DICE_ROLL_DURATION_MS, PLANNING_DURATION_SECONDS, replayDelay,
 } from "../lib/timing";
 import {
-  addResolutionEvents, createMatchStats, primaryWeapon, resultSummary, resultTitle,
+  addResolutionEvents, createMatchStats, primaryWeapon, resultFlavor, resultSummary, resultTitle,
   type MatchStats,
 } from "../lib/match-summary";
 import { createResultCard } from "../lib/result-card";
@@ -509,6 +509,7 @@ export default function Home() {
   const opponentSide = opponent(side);
   const winnerText = game.winner === "draw" ? "平局" : game.winner === side ? "你赢了" : "对手获胜";
   const resultWeapon = primaryWeapon(matchStats, game.players[side].weapons[0]);
+  const resultIdentity = resultFlavor(matchStats, game.winner, side, game.players[side].health);
   const generateShareCard = async () => {
     if (!game.winner) return;
     setShareCardOpen(true); setShareCardStatus("generating"); setShareCardUrl("");
@@ -518,6 +519,10 @@ export default function Home() {
         outcomeText: winnerText,
         title: resultTitle(matchStats, game.winner, side),
         summary: resultSummary(matchStats, resultWeapon),
+        grade: resultIdentity.grade,
+        gradeLabel: resultIdentity.gradeLabel,
+        style: resultIdentity.style,
+        quote: resultIdentity.quote,
         modeLabel: "AI 挑战",
         round: game.round,
         playerName: game.players[side].name || "旅行者",
@@ -583,18 +588,14 @@ export default function Home() {
       </aside>}
 
       {screen === "finished" && <aside className={`result-panel ${game.winner === side ? "is-win" : game.winner === "draw" ? "is-draw" : "is-loss"}`}>
+        <div className="result-burst" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} />)}</div>
         <div className="result-kicker"><span>MATCH REPORT</span><b>AI 挑战</b></div>
-        <div className="result-outcome"><i>{game.winner === side ? "胜" : game.winner === "draw" ? "和" : "败"}</i><div><small>第 {game.round} 回合结束</small><h1>{winnerText}</h1></div></div>
-        <div className="result-title"><strong>{resultTitle(matchStats, game.winner, side)}</strong><span>{resultSummary(matchStats, resultWeapon)}</span></div>
+        <div className="result-outcome"><i>{game.winner === side ? "胜" : game.winner === "draw" ? "和" : "败"}</i><div><small>第 {game.round} 回合结束</small><h1>{winnerText}</h1></div><em className="result-grade"><b>{resultIdentity.grade}</b><small>{resultIdentity.gradeLabel}</small></em></div>
+        <div className="result-title"><header><strong>{resultTitle(matchStats, game.winner, side)}</strong><em>#{resultIdentity.style}</em></header><span>{resultSummary(matchStats, resultWeapon)}</span><q>{resultIdentity.quote}</q></div>
+        <div className="result-moments">{resultIdentity.moments.map((moment) => <span key={moment.label}><i>{moment.mark}</i><b>{moment.value}</b><small>{moment.label}</small></span>)}</div>
         <div className="result-weapon"><img src={WEAPON_THUMB_ART[resultWeapon]} alt="" width="320" height="320" decoding="async" /><span><small>主力武器</small><b>{WEAPONS[resultWeapon].name}</b></span><em>使用 {matchStats.weaponUses[resultWeapon]} 次</em></div>
-        <div className="result-stats">
-          <span><b>{game.round}</b><small>交战回合</small></span>
-          <span><b>{matchStats.hits}/{matchStats.diceRolls}</b><small>骰子命中</small></span>
-          <span><b>{matchStats.damage}</b><small>累计伤害</small></span>
-          <span><b>{matchStats.maxRoll || "—"}</b><small>最高骰点</small></span>
-        </div>
         <div className="final-score"><span>你 {game.players[side].health} HP</span><i>:</i><span>AI {game.players[opponentSide].health} HP</span></div>
-        <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>生成战报</button><button type="button" className="primary-action" onClick={match}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
+        <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>晒出这局</button><button type="button" className="primary-action" onClick={match}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
       </aside>}
       {shareCardOpen && <ResultShareSheet status={shareCardStatus} imageUrl={shareCardUrl}
         filename={`soudache-report-round-${game.round}.png`} onRetry={generateShareCard} onClose={() => setShareCardOpen(false)} />}

@@ -18,6 +18,8 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .resolution-track i, .resolution-actor > i, .big-die, .global-actions button,
 .restart-glyph, .weapon-glyph, .range-diagram > footer i, .weapon-art i,
 .season-mark b, .brand-bar strong i, .die-face { height: auto; }
+.result-outcome > i { height: 3.25rem; }
+.result-moments i { height: 1.35rem; }
 .radar { height: 8rem; }
 .avatar { height: 3rem; }
 .piece { height: 58%; }
@@ -61,7 +63,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .battle-log > div > * + *, .event-progress > * + *, .final-score > * + *,
 .global-actions > * + *, .range-diagram > footer > * + *, .guide-dots > * + *,
 .battle-features > * + *, .loadout-title > * + *, .weapon-column > header > * + *,
-.weapon-card-stats > * + * { margin-left: .4rem; }
+.weapon-card-stats > * + *, .result-outcome > * + *, .result-title header > * + * { margin-left: .4rem; }
 .supports-flex-gap .brand-bar strong > * + *, .supports-flex-gap .brand-bar > span > * + *,
 .supports-flex-gap .player-hud > * + *, .supports-flex-gap .player-copy > div > * + *,
 .supports-flex-gap .health-pips > * + *, .supports-flex-gap .phase-track span > * + *,
@@ -73,6 +75,7 @@ body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none
 .supports-flex-gap .range-diagram > footer > * + *, .supports-flex-gap .guide-dots > * + *,
 .supports-flex-gap .battle-features > * + *, .supports-flex-gap .loadout-title > * + *,
 .supports-flex-gap .weapon-column > header > * + *, .supports-flex-gap .weapon-card-stats > * + * { margin-left: 0; }
+.supports-flex-gap .result-outcome > * + *, .supports-flex-gap .result-title header > * + * { margin-left: 0; }
 
 @media (max-width: 900px) and (orientation: landscape) {
   :root { --hex-w: 2.65rem; }

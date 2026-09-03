@@ -5,6 +5,10 @@ export interface ResultCardInput {
   outcomeText: string;
   title: string;
   summary: string;
+  grade: string;
+  gradeLabel: string;
+  style: string;
+  quote: string;
   modeLabel: string;
   round: number;
   playerName: string;
@@ -182,12 +186,25 @@ export async function createResultCard(input: ResultCardInput): Promise<string> 
   context.font = "800 104px sans-serif";
   context.fillText(palette.glyph, 540, 314);
 
+  roundedRect(context, 864, 216, 144, 128, 20);
+  context.fillStyle = "rgba(8, 13, 18, .82)";
+  context.fill();
+  context.strokeStyle = "rgba(239,197,109,.32)";
+  context.lineWidth = 2;
+  context.stroke();
+  context.fillStyle = palette.accent;
+  context.font = "800 62px sans-serif";
+  context.fillText(input.grade, 936, 276);
+  context.fillStyle = "#7b878f";
+  context.font = "400 20px sans-serif";
+  context.fillText(input.gradeLabel, 936, 314);
+
   context.fillStyle = "#f4f1e9";
   context.font = "700 70px sans-serif";
   context.fillText(input.outcomeText, 540, 478);
   context.fillStyle = "#74808a";
   context.font = "400 27px sans-serif";
-  context.fillText(`第 ${input.round} 回合结束  ·  ${input.modeLabel}`, 540, 526);
+  context.fillText(`第 ${input.round} 回合结束  ·  ${input.modeLabel}  ·  #${input.style}`, 540, 526);
 
   roundedRect(context, 72, 580, 936, 174, 24);
   context.fillStyle = "rgba(239,197,109,.08)";
@@ -199,8 +216,11 @@ export async function createResultCard(input: ResultCardInput): Promise<string> 
   context.font = "700 42px sans-serif";
   context.fillText(input.title, 110, 642);
   context.fillStyle = "#87929c";
-  context.font = "400 27px sans-serif";
-  drawWrappedText(context, input.summary, 110, 695, 850, 38, 2);
+  context.font = "400 25px sans-serif";
+  context.fillText(input.summary, 110, 686);
+  context.fillStyle = "#d8d2c6";
+  context.font = "500 27px sans-serif";
+  drawWrappedText(context, `“${input.quote}”`, 110, 728, 850, 36, 1);
 
   roundedRect(context, 72, 792, 936, 224, 24);
   context.fillStyle = "rgba(12, 19, 26, .94)";
