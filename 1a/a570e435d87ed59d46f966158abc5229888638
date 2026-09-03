@@ -1,0 +1,34 @@
+app/globals.css
+  s_c5cc5ad7c51856::t_87d4bd7e336b87 198-200,202,204-221,302-309
+  s_c5cc5ad7c51856::t_f6348b6c1d6a7b 203
+  s_c5cc5ad7c51856::t_0e30be12607f0e 310
+app/page.tsx
+  s_c5cc5ad7c51856::t_6d6d4fa478c05b 17-18,275-277,575-602,660,662-663
+lib/result-card.ts
+  s_c5cc5ad7c51856::t_25e5f618071ae2 1-249
+minitool/App.tsx
+  s_c5cc5ad7c51856::t_6d6d4fa478c05b 17-18,267-269,512-539,597,599-600
+minitool/compat.css
+  s_c5cc5ad7c51856::t_f6348b6c1d6a7b 86
+  s_c5cc5ad7c51856::t_87d4bd7e336b87 28,37-40,138-139
+components/ResultShareSheet.tsx
+  s_c5cc5ad7c51856::t_25e5f618071ae2 1-36
+scripts/package-minitool.mjs
+  s_c5cc5ad7c51856::t_3c6e9d51c80478 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "1aa570e435d87ed59d46f966158abc5229888638",
+  "prompts": {},
+  "sessions": {
+    "s_c5cc5ad7c51856": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04b8b-1dd5-7d30-b190-0a2f81a0bbe6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "贺庆阳 <heqingyang@xiaohongshu.com>"
+    }
+  }
+}
