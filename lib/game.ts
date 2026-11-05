@@ -257,54 +257,194 @@ export function cellDistance(a: string, b: string): number {
   return (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2;
 }
 
-/** A deterministic training opponent that plans from the same public state as a player. */
-export function planBotTurn(state: GameState, side: Side): TurnPlan {
-  const target = state.players[opponent(side)].position;
-  const visited = new Set<string>([state.players[side].position]);
-  const moves: string[] = [];
-  let position = state.players[side].position;
+interface BotRoute {
+  moves: string[];
+  end: string;
+}
 
-  for (let step = 0; step < 2 && position !== target; step += 1) {
-    const currentDistance = cellDistance(position, target);
-    const candidates = legalMoveTargets(state, position).sort((a, b) => {
-      const distance = cellDistance(a, target) - cellDistance(b, target);
-      if (distance) return distance;
-      const visitedScore = Number(visited.has(a)) - Number(visited.has(b));
-      return visitedScore || a.localeCompare(b);
-    });
-    const next = candidates[0];
-    if (!next || cellDistance(next, target) > currentDistance) break;
-    moves.push(next);
-    visited.add(next);
-    position = next;
-  }
+type BotTactic = "pressure" | "kite" | "flank" | "bait";
 
-  const attack = state.players[side].weapons.reduce<{
-    weapon: WeaponId;
-    direction: number;
-    score: number;
-  } | null>((best, weapon) => {
+/** Short, loop-free routes; one safest route per destination, including holding. */
+function botRoutes(state: GameState, side: Side, removable: Set<string>): BotRoute[] {
+  const start = state.players[side].position;
+  const routes = new Map<string, BotRoute>([[start, { moves: [], end: start }]]);
+  const risk = (moves: string[]) => moves.reduce((sum, cell) => sum + Number(removable.has(cell)), 0);
+  const visit = (moves: string[], from: string) => {
+    if (moves.length === 2) return;
+    for (const end of legalMoveTargets(state, from)) {
+      if (end === start || moves.includes(end)) continue;
+      const next = [...moves, end];
+      const previous = routes.get(end);
+      if (!previous || risk(next) < risk(previous.moves)
+        || (risk(next) === risk(previous.moves) && next.length < previous.moves.length)) {
+        routes.set(end, { moves: next, end });
+      }
+      visit(next, end);
+    }
+  };
+  visit([], start);
+  return [...routes.values()];
+}
+
+function botDamage(weapons: WeaponId[], from: string, to: string): number {
+  let best = 0;
+  for (const weapon of weapons) {
     for (let direction = 1; direction <= 6; direction += 1) {
-      const damage = attackDamage(weapon, position, target, direction);
-      const nearest = Math.min(...weaponAttackCells(weapon, position, direction)
-        .map((cell) => cellDistance(cell.cell, target)));
-      const score = damage > 0
-        ? 1_000 + damage * weaponHitChance(weapon) * 100
-        : -nearest * 10 + weaponHitChance(weapon);
-      if (!best || score > best.score) best = { weapon, direction, score };
+      best = Math.max(best, attackDamage(weapon, from, to, direction) * weaponHitChance(weapon));
+    }
+  }
+  return best;
+}
+
+function botIdealRange(weapons: WeaponId[]): number {
+  // With mixed equipment, keep the longer weapon useful instead of always diving in.
+  return Math.max(...weapons.map((weapon) => {
+    const item = WEAPONS[weapon];
+    let range = 0;
+    let damage = item.sameCellDamage;
+    for (const band of item.pattern) {
+      if (band.damage > damage || (band.damage === damage && band.distance > range)) {
+        range = band.distance;
+        damage = band.damage;
+      }
+    }
+    return range;
+  }));
+}
+
+/**
+ * Plans only from public round-start state, never the human's submitted orders.
+ * RNG is injectable for reproducible tests; all callers share this implementation.
+ */
+export function planBotTurn(
+  state: GameState,
+  side: Side,
+  random: () => number = Math.random,
+): TurnPlan {
+  const me = state.players[side];
+  const enemy = state.players[opponent(side)];
+  const idealRange = botIdealRange(me.weapons);
+  const enemyRange = botIdealRange(enemy.weapons);
+  const cautious = me.health <= 3 || state.initiative !== side;
+  const roll = random();
+  const tactic: BotTactic = roll < 0.25 ? "pressure"
+    : roll < (cautious || idealRange >= 2 ? 0.55 : 0.4) ? "kite"
+      : roll < 0.8 ? "flank" : "bait";
+  const removable = new Set(BOARD_CELLS.map(cellId).filter((cell) => canRemove(state, cell)));
+  const routes = botRoutes(state, side, removable);
+  const damageCache = new Map<string, number>();
+  const enemyDamage = (from: string, to: string) => {
+    const key = `${from}:${to}`;
+    if (!damageCache.has(key)) damageCache.set(key, botDamage(enemy.weapons, from, to));
+    return damageCache.get(key)!;
+  };
+  const responses = botRoutes(state, opponent(side), removable).map((route) => {
+    const distance = cellDistance(route.end, me.position);
+    const previousDistance = cellDistance(enemy.position, me.position);
+    // Model holding, advancing, and moving to useful firing positions. The actual
+    // enemy plan is unknown; no single guessed destination receives certainty.
+    const rangeFit = Math.exp(-Math.abs(distance - enemyRange) * 0.65);
+    const approach = distance < previousDistance ? 1.4 : 0.65;
+    return { ...route, weight: rangeFit + approach };
+  });
+  // Holding is one strategic choice, not one of ~19 equally likely cells.
+  // Reserve probability for it so a stationary player isn't ignored forever.
+  const movingWeight = responses.filter((item) => item.moves.length > 0)
+    .reduce((sum, item) => sum + item.weight, 0);
+  const predictions = responses.map((item) => ({ ...item,
+    weight: movingWeight === 0 ? 1 : item.moves.length === 0 ? 0.35 : item.weight / movingWeight * 0.65,
+  }));
+  const threats = predictions.map((item) => {
+    let best = { weapon: enemy.weapons[0], direction: 1, damage: -1 };
+    for (const weapon of enemy.weapons) {
+      for (let direction = 1; direction <= 6; direction += 1) {
+        const damage = attackDamage(weapon, item.end, me.position, direction) * weaponHitChance(weapon);
+        if (damage > best.damage) best = { weapon, direction, damage };
+      }
+    }
+    return { ...item, attack: best };
+  });
+  const bestAttack = (from: string, forecast: { end: string; weight: number }[]) => {
+    let best = { weapon: me.weapons[0], direction: 1, score: -Infinity };
+    for (const weapon of me.weapons) {
+      for (let direction = 1; direction <= 6; direction += 1) {
+        const score = forecast.reduce((sum, item) => {
+          const damage = attackDamage(weapon, from, item.end, direction);
+          const kill = damage >= enemy.health && damage > 0 ? 0.9 : 0;
+          return sum + item.weight * (damage + kill) * weaponHitChance(weapon);
+        }, 0);
+        if (score > best.score) best = { weapon, direction, score };
+      }
     }
     return best;
-  }, null);
+  };
+  const originDanger = predictions.reduce((sum, item) =>
+    sum + item.weight * enemyDamage(item.end, me.position), 0);
+  const ranked = routes.map((route) => {
+    const attack = bestAttack(route.end, predictions);
+    let danger = 0;
+    for (const item of threats) {
+      // Blend attacks aimed at our old position with possible enemy anticipation.
+      const aimed = attackDamage(item.attack.weapon, item.end, route.end, item.attack.direction)
+        * weaponHitChance(item.attack.weapon);
+      const adaptive = enemyDamage(item.end, route.end);
+      danger += item.weight * (aimed * 0.65 + adaptive * 0.35);
+    }
+    const distance = cellDistance(route.end, enemy.position);
+    const rangeError = Math.abs(distance - idealRange);
+    const mobility = legalMoveTargets(state, route.end).length;
+    const fragile = route.moves.reduce((sum, cell) => sum + Number(removable.has(cell)), 0);
+    const lateral = route.moves.length > 0 && parseCell(route.end).r !== parseCell(me.position).r;
+    const retreat = distance > cellDistance(me.position, enemy.position);
+    const exposureSaved = Math.max(0, originDanger - danger);
+    let style = 0;
+    if (tactic === "pressure") style = attack.score * 0.45 - distance * 0.08;
+    if (tactic === "kite") style = -rangeError * 0.22 + exposureSaved * 0.5;
+    if (tactic === "flank") style = Number(lateral) * 0.75 + exposureSaved * 0.4;
+    // Hold a useful range or retreat into a counterattack; do not reward fleeing
+    // when neither side can interact. Bait relies on the forecast of pursuit.
+    if (tactic === "bait") style = attack.score * Number(retreat || route.moves.length === 0) * 0.55
+      + exposureSaved * 0.35 - rangeError * 0.16;
+    const sameCellDagger = route.end === enemy.position && enemy.weapons.includes("dagger") ? 0.5 : 0;
+    const score = attack.score * 2.4 - danger * (cautious ? 2.6 : 1.8)
+      - rangeError * 0.2 + mobility * 0.045 - fragile * 0.15
+      - route.moves.length * 0.025 - sameCellDagger + style;
+    return { ...route, score, attack };
+  }).sort((a, b) => b.score - a.score);
+  // Variety stays inside a narrow quality band, rather than random legal moves.
+  const shortlist = ranked.filter((route) => route.score >= ranked[0].score - 0.28);
+  const chosen = shortlist[Math.min(shortlist.length - 1, Math.floor(random() * shortlist.length))];
 
-  const remove = BOARD_CELLS.map(cellId)
-    .filter((cell) => !moves.includes(cell) && canRemove(state, cell))
-    .sort((a, b) => cellDistance(a, target) - cellDistance(b, target) || a.localeCompare(b))[0];
-
+  // Evaluate route interception and the resulting attack, rather than removing
+  // whichever brick happens to be nearest. Never remove our own planned route.
+  let removal: { cell?: string; score: number; attack: typeof chosen.attack } = {
+    score: chosen.attack.score * 2.4,
+    attack: chosen.attack,
+  };
+  for (const cell of BOARD_CELLS.map(cellId)) {
+    if (chosen.moves.includes(cell) || !removable.has(cell)) continue;
+    let intercepted = 0;
+    const forecast = predictions.map((item) => {
+      const index = item.moves.indexOf(cell);
+      if (index < 0) return item;
+      intercepted += item.weight;
+      return { ...item, end: index === 0 ? enemy.position : item.moves[index - 1] };
+    });
+    const attack = bestAttack(chosen.end, forecast);
+    const danger = forecast.reduce((sum, item) =>
+      sum + item.weight * enemyDamage(item.end, chosen.end), 0);
+    const originalDanger = predictions.reduce((sum, item) =>
+      sum + item.weight * enemyDamage(item.end, chosen.end), 0);
+    const escapeLoss = legalMoveTargets(state, chosen.end).includes(cell) ? 0.16 : 0;
+    const score = attack.score * 2.4 + intercepted * 0.3
+      + (originalDanger - danger) * 1.6 - escapeLoss;
+    if (score > removal.score + 0.001) removal = { cell, score, attack };
+  }
   return {
-    remove,
-    moves,
-    weapon: attack?.weapon ?? state.players[side].weapons[0],
-    direction: attack?.direction ?? 1,
+    remove: removal.cell,
+    moves: chosen.moves,
+    weapon: removal.attack.weapon,
+    direction: removal.attack.direction,
   };
 }
 

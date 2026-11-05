@@ -88,11 +88,12 @@ test("training bot creates a complete and legal turn plan", () => {
   const game = createGame(cyan, { ...red, weapons: ["dagger", "staff"] }, "cyan");
   game.players.cyan.position = "0,0";
   game.players.red.position = "2,0";
-  const plan = planBotTurn(game, "red");
+  const plan = planBotTurn(game, "red", () => 0.5);
   assert.equal(validateMovePlan(game, "red", plan.moves), true);
   assert.ok(!plan.remove || canRemove(game, plan.remove));
   assert.ok(game.players.red.weapons.includes(plan.weapon));
   assert.ok(plan.direction >= 1 && plan.direction <= 6);
   const attackOrigin = plan.moves.at(-1) || game.players.red.position;
-  assert.ok(attackDamage(plan.weapon, attackOrigin, game.players.cyan.position, plan.direction) > 0);
+  // The bot can now aim at a predicted move, rather than only the current cell.
+  assert.ok(BOARD_CELLS.some(({ q, r }) => attackDamage(plan.weapon, attackOrigin, `${q},${r}`, plan.direction) > 0));
 });
