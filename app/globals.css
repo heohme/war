@@ -760,3 +760,16 @@ button,input,textarea { font:inherit; } button { color:inherit; }
   .battle-log { min-height:2.2rem; padding:.35rem; }
   .die-roll .big-die { width:3.1rem; margin-top:.2rem; }
 }
+
+/* Keep the explanation visible and scrollable on compact result screens. */
+.battle-shell.finished .result-panel { justify-content:flex-start; overflow-y:auto; }
+.result-review { flex-shrink:0; margin-top:.65rem; padding:.55rem .65rem; border:1px solid var(--line); background:rgba(9,15,20,.66); }
+.result-review header { display:flex; justify-content:space-between; color:#e4d8bd; font-size:.7rem; }
+.result-review header span { color:#98a5ae; font-size:.56rem; }
+.result-review dl { margin:.35rem 0 0; }
+.result-review dl>div { display:flex; align-items:flex-start; padding:.35rem 0; border-top:1px solid rgba(255,255,255,.08); }
+.result-review dt { flex:0 0 5.3rem; color:#cbd3d9; font-size:.64rem; }
+.result-review dd { min-width:0; margin:0; }
+.result-review dd b { display:block; color:var(--gold); font-size:.68rem; }
+.result-review dd small { display:block; margin-top:.15rem; color:#a4afb8; font-size:.57rem; line-height:1.5; }
+.result-review p { margin:.3rem 0 0; color:#cbd3d9; font-size:.59rem; line-height:1.5; }
