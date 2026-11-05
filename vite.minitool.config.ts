@@ -17,11 +17,11 @@ export default defineConfig({
       entry: resolve(import.meta.dirname, "minitool/entry.tsx"),
       name: "SouDaCheMiniTool",
       formats: ["iife"],
-      fileName: () => "assets/app.js",
+      fileName: () => "app.js",
     },
     rollupOptions: {
       output: {
-        assetFileNames: (assetInfo) => assetInfo.name?.endsWith(".css") ? "assets/style.css" : "assets/[name][extname]",
+        assetFileNames: (assetInfo) => assetInfo.name?.endsWith(".css") ? "style.css" : "assets/[name][extname]",
       },
     },
   },
