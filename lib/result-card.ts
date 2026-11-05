@@ -206,11 +206,11 @@ export async function createResultCard(input: ResultCardInput): Promise<string> 
   context.font = "400 27px sans-serif";
   context.fillText(`第 ${input.round} 回合结束  ·  ${input.modeLabel}  ·  #${input.style}`, 540, 526);
 
-  roundedRect(context, 72, 580, 936, 174, 24);
+  roundedRect(context, 72, 580, 936, 198, 24);
   context.fillStyle = "rgba(239,197,109,.08)";
   context.fill();
   context.fillStyle = palette.accent;
-  context.fillRect(72, 580, 5, 174);
+  context.fillRect(72, 580, 5, 198);
   context.textAlign = "left";
   context.fillStyle = "#f0d18d";
   context.font = "700 42px sans-serif";
@@ -220,7 +220,13 @@ export async function createResultCard(input: ResultCardInput): Promise<string> 
   context.fillText(input.summary, 110, 686);
   context.fillStyle = "#d8d2c6";
   context.font = "500 27px sans-serif";
-  drawWrappedText(context, `“${input.quote}”`, 110, 728, 850, 36, 1);
+  const sentenceBreak = input.quote.indexOf("。") + 1;
+  if (sentenceBreak > 0 && sentenceBreak < input.quote.length) {
+    drawWrappedText(context, input.quote.slice(0, sentenceBreak), 110, 728, 850, 32, 1);
+    drawWrappedText(context, input.quote.slice(sentenceBreak), 110, 760, 850, 32, 1);
+  } else {
+    drawWrappedText(context, input.quote, 110, 728, 850, 32, 2);
+  }
 
   roundedRect(context, 72, 792, 936, 224, 24);
   context.fillStyle = "rgba(12, 19, 26, .94)";
@@ -249,10 +255,15 @@ export async function createResultCard(input: ResultCardInput): Promise<string> 
   context.font = "500 26px sans-serif";
   context.fillText(`使用 ${input.weaponUses} 次  ·  ${input.playerName}`, 320, 969);
 
-  drawStat(context, 72, 1052, String(input.round), "交战回合");
-  drawStat(context, 310, 1052, `${input.stats.hits}/${input.stats.diceRolls}`, "骰子命中");
-  drawStat(context, 548, 1052, String(input.stats.damage), "累计伤害");
-  drawStat(context, 786, 1052, input.stats.maxRoll ? String(input.stats.maxRoll) : "—", "最高骰点");
+  drawStat(context, 72, 1052, String(input.stats.predictionMisses), "预判落空");
+  drawStat(context, 310, 1052, String(input.stats.routesInterrupted), "路线被截断");
+  drawStat(context, 548, 1052, String(input.stats.diceMisses), "骰子未命中");
+  drawStat(context, 786, 1052, input.stats.attacks ? `${input.stats.hits}/${input.stats.attacks}` : "未出手", "攻击命中");
+
+  context.textAlign = "center";
+  context.fillStyle = "#aeb6bc";
+  context.font = "400 23px sans-serif";
+  context.fillText(`路线被截后攻击落空 ${input.stats.blockedAttackMisses} 次，未重复计入预判落空`, 540, 1226);
 
   context.textAlign = "center";
   context.fillStyle = "#aeb6bc";

@@ -15,7 +15,10 @@ import {
   type MatchStats,
 } from "../lib/match-summary";
 import { createResultCard } from "../lib/result-card";
-import { ResultShareSheet, type ResultShareStatus } from "../components/ResultShareSheet";
+import { ResultReview } from "../components/ResultReview";
+import type { ResultShareStatus } from "../components/ResultShareSheet";
+import { ResultShareSheet } from "./ResultShareSheet";
+import { readLocalValue, writeLocalValue } from "./platform";
 
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
@@ -81,7 +84,6 @@ const AI_READY_LOCKS: Locks = {
 
 function getPlayerId() {
   const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  sessionStorage.setItem("multiwar-player-id", id);
   return id;
 }
 
@@ -299,9 +301,11 @@ export default function Home() {
   }, [attackWeapon, direction, game, moves, recordActivity, removeCell, screen]);
 
   useEffect(() => {
-    if (localStorage.getItem("multiwar-guide-v2")) return;
-    const guideTimer = setTimeout(() => setGuideOpen(true), 0);
-    return () => clearTimeout(guideTimer);
+    let cancelled = false;
+    void readLocalValue("multiwar-guide-v2").then((value) => {
+      if (!cancelled && !value) setGuideOpen(true);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -344,7 +348,6 @@ export default function Home() {
     const playerId = getPlayerId();
     recordActivity("对局", "开始离线 AI 对战");
     setMatchStats(createMatchStats());
-    localStorage.setItem("multiwar-name", name.trim() || "旅行者");
     const next = createGame(
       { id: playerId, name: name.trim() || "旅行者", weapons },
       { id: "bot-local", name: "训练机器人", weapons: ["dagger", "staff"] },
@@ -428,15 +431,18 @@ export default function Home() {
   };
 
   const closeGuide = () => {
-    localStorage.setItem("multiwar-guide-v2", "complete");
+    void writeLocalValue("multiwar-guide-v2", "complete");
     setGuideOpen(false);
   };
 
-  const submitFeedback = () => {
+  const submitFeedback = async () => {
     const description = feedbackDescription.trim();
     if (!description || feedbackStatus === "submitting") return;
     const payload = { description, logs: activityLogRef.current.slice(-40), context: { screen, round: game?.round, stage, mode: matchMode } };
-    localStorage.setItem("multiwar-offline-feedback", JSON.stringify(payload));
+    setFeedbackStatus("submitting");
+    if (!await writeLocalValue("multiwar-offline-feedback", JSON.stringify(payload))) {
+      setFeedbackStatus("error"); return;
+    }
     recordActivity("反馈", "问题记录已保存在本机");
     setFeedbackStatus("success"); setFeedbackDescription("");
   };
@@ -592,13 +598,13 @@ export default function Home() {
         <div className="result-kicker"><span>MATCH REPORT</span><b>AI 挑战</b></div>
         <div className="result-outcome"><i>{game.winner === side ? "胜" : game.winner === "draw" ? "和" : "败"}</i><div><small>第 {game.round} 回合结束</small><h1>{winnerText}</h1></div><em className="result-grade"><b>{resultIdentity.grade}</b><small>{resultIdentity.gradeLabel}</small></em></div>
         <div className="result-title"><header><strong>{resultTitle(matchStats, game.winner, side)}</strong><em>#{resultIdentity.style}</em></header><span>{resultSummary(matchStats, resultWeapon)}</span><q>{resultIdentity.quote}</q></div>
-        <div className="result-moments">{resultIdentity.moments.map((moment) => <span key={moment.label}><i>{moment.mark}</i><b>{moment.value}</b><small>{moment.label}</small></span>)}</div>
+        <ResultReview stats={matchStats} />
         <div className="result-weapon"><img src={WEAPON_THUMB_ART[resultWeapon]} alt="" width="320" height="320" decoding="async" /><span><small>主力武器</small><b>{WEAPONS[resultWeapon].name}</b></span><em>使用 {matchStats.weaponUses[resultWeapon]} 次</em></div>
         <div className="final-score"><span>你 {game.players[side].health} HP</span><i>:</i><span>AI {game.players[opponentSide].health} HP</span></div>
         <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>晒出这局</button><button type="button" className="primary-action" onClick={match}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
       </aside>}
       {shareCardOpen && <ResultShareSheet status={shareCardStatus} imageUrl={shareCardUrl}
-        filename={`soudache-report-round-${game.round}.png`} onRetry={generateShareCard} onClose={() => setShareCardOpen(false)} />}
+        onRetry={generateShareCard} onClose={() => setShareCardOpen(false)} />}
       {notice && <button className="toast" onClick={() => setNotice("")}>{notice}</button>}
     </main>
   );

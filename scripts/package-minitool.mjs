@@ -5,7 +5,9 @@ import { spawnSync } from "node:child_process";
 const projectRoot = resolve(import.meta.dirname, "..");
 const outputRoot = resolve(projectRoot, "dist-minitool");
 const artifactRoot = resolve(projectRoot, "artifacts");
-const artifactPath = resolve(artifactRoot, "soudache-minitool-ai-v1.0.5.zip");
+const version = process.env.MINITOOL_VERSION || "1.0.3";
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid MINITOOL_VERSION");
+const artifactPath = resolve(artifactRoot, `soudache-minitool-ai-v${version}.zip`);
 const allowedExtensions = new Set([".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".woff", ".woff2", ".json"]);
 const forbiddenPatterns = [
   ["fetch(", /\bfetch\s*\(/],
