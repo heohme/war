@@ -20,7 +20,8 @@ import { ResultShareSheet, type ResultShareStatus } from "../components/ResultSh
 
 type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
-type RoomCredential = { roomId: string; side: Side; token: string; playerId: string };
+type MatchMode = "pvp" | "solo" | "friend";
+type RoomCredential = { roomId: string; side: Side; token: string; playerId: string; mode?: MatchMode; roomCode?: string; matchId?: string };
 type ActivityLogEntry = { at: number; type: string; detail: string };
 type FeedbackStatus = "idle" | "submitting" | "success" | "error";
 type WeaponGroup = "melee" | "ranged";
@@ -88,7 +89,7 @@ function websocketUrl(path: string) {
 }
 
 function getPlayerId() {
-  const id = crypto.randomUUID();
+  const id = sessionStorage.getItem("multiwar-player-id") || crypto.randomUUID();
   sessionStorage.setItem("multiwar-player-id", id);
   return id;
 }
@@ -271,7 +272,15 @@ export default function Home() {
   const [restartOpen, setRestartOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
-  const [matchMode, setMatchMode] = useState<"pvp" | "solo">("pvp");
+  const [matchMode, setMatchMode] = useState<MatchMode>("pvp");
+  const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [rematch, setRematch] = useState({ cyan: false, red: false });
+  const [rematchPending, setRematchPending] = useState(false);
+  const [peerLeft, setPeerLeft] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const matchIdRef = useRef<string | undefined>(undefined);
+  const resolvedRoundsRef = useRef(new Set<string>());
   const [matchStats, setMatchStats] = useState<MatchStats>(createMatchStats);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [shareCardStatus, setShareCardStatus] = useState<ResultShareStatus>("generating");
@@ -298,21 +307,50 @@ export default function Home() {
   const connectRoom = useCallback((next: RoomCredential) => {
     socketRef.current?.close();
     setCredential(next);
+    setSocketConnected(false);
+    setPeerLeft(false);
+    setRematchPending(false);
+    matchIdRef.current = next.matchId;
+    setMatchMode(next.mode || "pvp");
+    setRoomCode(next.roomCode || "");
     sessionStorage.setItem("multiwar-room", JSON.stringify(next));
     const params = new URLSearchParams({ playerId: next.playerId, token: next.token });
     const socket = new WebSocket(websocketUrl(`/ws/room/${next.roomId}?${params}`));
     socketRef.current = socket;
     socket.onmessage = (message) => {
+      if (socketRef.current !== socket) return;
       const data = JSON.parse(message.data);
       recordActivity("server", `${data.type || "message"}${data.game?.round ? ` · 回合 ${data.game.round}` : ""}`);
-      if (data.type === "room_snapshot") {
+      if (data.mode) setMatchMode(data.mode);
+      if (data.roomCode) setRoomCode(data.roomCode);
+      if (data.rematch) { setRematch(data.rematch); setRematchPending(false); }
+      if (data.connected && typeof data.connected === "object") setOpponentConnected(Boolean(data.connected[opponent(next.side)]));
+      if (typeof data.peerLeft === "boolean") setPeerLeft(data.peerLeft);
+      if (data.matchId) {
+        if (matchIdRef.current && matchIdRef.current !== data.matchId) {
+          setMatchStats(createMatchStats()); resolvedRoundsRef.current.clear();
+          setShareCardOpen(false); setShareCardUrl("");
+          setEvents([]); setEventIndex(-1); setSettledDieKey(""); setResolutionAfter(null); resetDraft();
+        }
+        matchIdRef.current = data.matchId;
+        const saved = { ...next, matchId: data.matchId, mode: data.mode || next.mode, roomCode: data.roomCode || next.roomCode };
+        setCredential(saved); sessionStorage.setItem("multiwar-room", JSON.stringify(saved));
+      }
+      if (data.type === "room_snapshot" || data.type === "room_updated") {
         setGame(data.game); setLocks(data.locks || EMPTY_LOCKS); setDeadlineAt(data.deadlineAt || null);
         setAttackWeapon(data.game.players[next.side].weapons[0]);
+        resetDraft();
+        if (data.status === "planning" && data.selfPlan) {
+          setRemoveCell(data.selfPlan.remove);
+          setMoves(data.selfPlan.moves || []);
+          if (data.selfPlan.weapon) setAttackWeapon(data.selfPlan.weapon);
+          if (data.selfPlan.direction) setDirection(data.selfPlan.direction);
+        }
         if (data.status === "finished") setScreen("finished");
         else if (data.status === "resolving" && data.latest) {
           setGame(data.latest.before); setResolutionAfter(data.latest.after);
           setEvents(data.latest.events); setEventIndex(-1); setScreen("resolving");
-        } else if (data.status === "planning") setScreen("planning");
+        } else if (data.status === "planning") { setEvents([]); setResolutionAfter(null); setScreen("planning"); }
         else setScreen("matching");
       }
       if (data.type === "round_started") {
@@ -322,22 +360,46 @@ export default function Home() {
       }
       if (data.type === "progress") setLocks(data.locks);
       if (data.type === "connection" && data.side === opponent(next.side)) setOpponentConnected(data.connected);
+      if (data.type === "peer_left") {
+        setPeerLeft(true); setOpponentConnected(false); setRematchPending(false);
+        setNotice("对手已离开房间，可以返回主页重新邀请");
+      }
       if (data.type === "resolution") {
         setGame(data.before); setResolutionAfter(data.after); setEvents(data.events); setEventIndex(-1); setDeadlineAt(null);
-        setMatchStats((current) => addResolutionEvents(current, data.events as ResolutionEvent[], next.side));
+        const key = `${data.matchId || matchIdRef.current || next.roomId}:${data.before.round}`;
+        if (!resolvedRoundsRef.current.has(key)) {
+          resolvedRoundsRef.current.add(key);
+          setMatchStats((current) => addResolutionEvents(current, data.events as ResolutionEvent[], next.side));
+        }
         for (const event of (data.events as ResolutionEvent[]).slice(-12)) recordActivity("结算", eventText(event));
         setScreen("resolving");
       }
-      if (data.type === "error") setNotice("操作没有生效，请重新选择");
+      if (data.type === "error") {
+        setRematchPending(false);
+        if (data.code === "room_expired" || data.code === "room_closed") {
+          socketRef.current = null; socket.close(1000, "expired");
+          sessionStorage.removeItem("multiwar-room"); setCredential(null); setRoomCode("");
+          setGame(null); setSocketConnected(false); setScreen("home");
+          setNotice("房间已过期或关闭，请重新创建好友房间");
+        } else setNotice(data.code === "peer_left" ? "对手已离开，无法同房再战" : "操作没有生效，请重连后再试");
+      }
     };
-    socket.onopen = () => setNotice("");
-    socket.onerror = () => setNotice("连接不稳定，正在尝试恢复…");
+    socket.onopen = () => { if (socketRef.current === socket) { setSocketConnected(true); setNotice(""); } };
+    socket.onerror = () => { if (socketRef.current === socket) setNotice("连接不稳定，请点击重新连接"); };
     socket.onclose = (event) => {
-      if (event.code !== 1000 && socketRef.current === socket) setNotice("连接已中断，点击可重新连接");
+      if (socketRef.current === socket) {
+        setSocketConnected(false);
+        if (event.code !== 1000) setNotice("连接已中断，点击可重新连接");
+      }
     };
   }, [recordActivity, resetDraft]);
 
   useEffect(() => {
+    const invitedCode = new URLSearchParams(window.location.search).get("room");
+    if (invitedCode && /^[A-Z0-9]{6}$/i.test(invitedCode)) {
+      const timer = setTimeout(() => setRoomCodeInput(invitedCode.toUpperCase()), 0);
+      return () => clearTimeout(timer);
+    }
     if (localStorage.getItem("multiwar-guide-v2") || sessionStorage.getItem("multiwar-room")) return;
     const guideTimer = setTimeout(() => setGuideOpen(true), 0);
     return () => clearTimeout(guideTimer);
@@ -380,27 +442,63 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [eventIndex, events, resolutionAfter, screen]);
 
-  const match = (mode: "pvp" | "solo" = "pvp") => {
+  const match = (mode: MatchMode = "pvp", action: "create" | "join" = "create") => {
+    const code = roomCodeInput.trim().toUpperCase();
+    if (mode === "friend" && action === "join" && !/^[A-Z0-9]{6}$/.test(code)) {
+      setNotice("请输入朋友分享的 6 位房间码"); return;
+    }
     const playerId = getPlayerId();
-    setMatchMode(mode);
-    setMatchStats(createMatchStats());
-    recordActivity("匹配", mode === "solo" ? "开始单人测试" : "开始在线匹配");
+    setMatchMode(mode); setNotice(""); setCredential(null); setRoomCode("");
+    setRematch({ cyan: false, red: false }); setRematchPending(false); setPeerLeft(false);
+    setGame(null); setEvents([]); setResolutionAfter(null); setDeadlineAt(null); resetDraft();
+    matchIdRef.current = undefined; resolvedRoundsRef.current.clear();
+    setMatchStats(createMatchStats()); setShareCardOpen(false); setShareCardUrl("");
+    recordActivity("匹配", mode === "solo" ? "开始单人测试" : mode === "friend" ? "进入好友房间" : "开始在线匹配");
     localStorage.setItem("multiwar-name", name.trim() || "旅行者");
     sessionStorage.removeItem("multiwar-room"); socketRef.current?.close(); setScreen("matching");
     const params = new URLSearchParams({ playerId, name: name.trim() || "旅行者", weapons: weapons.join(",") });
     if (mode === "solo") params.set("mode", "solo");
-    const socket = new WebSocket(websocketUrl(`/ws/match?${params}`));
+    if (mode === "friend") { params.set("action", action); if (action === "join") params.set("code", code); }
+    const socket = new WebSocket(websocketUrl(`${mode === "friend" ? "/ws/friend" : "/ws/match"}?${params}`));
     socketRef.current = socket;
-    socket.onmessage = (message) => {
-      const data = JSON.parse(message.data);
-      if (data.type === "match_found") connectRoom({ roomId: data.roomId, side: data.side, token: data.token, playerId });
+    const fail = (message: string) => {
+      if (socketRef.current !== socket) return;
+      socketRef.current = null; socket.close(); setSocketConnected(false); setScreen("home"); setNotice(message);
     };
-    socket.onerror = () => setNotice("无法连接对战服务，请稍后重试");
+    socket.onmessage = (message) => {
+      if (socketRef.current !== socket) return;
+      const data = JSON.parse(message.data);
+      if (data.type === "match_found") connectRoom({ roomId: data.roomId, side: data.side, token: data.token, playerId,
+        roomCode: data.roomCode, matchId: data.matchId, mode: data.mode || mode });
+      if (data.type === "error") {
+        const errors: Record<string, string> = {
+          room_not_found: "房间码不存在或已过期，请向朋友确认",
+          room_expired: "房间已过期，请朋友重新创建",
+          room_full: "房间已满，请创建新的好友房间",
+          cannot_join_self: "你已在这个房间，请用另一台设备或独立浏览器邀请朋友加入",
+          invalid_room_code: "请输入正确的 6 位房间码",
+          room_closed: "房间已关闭，请重新创建",
+        };
+        fail(errors[data.code] || "无法进入房间，请确认房间码或重新创建");
+      }
+    };
+    socket.onerror = () => fail("无法连接对战服务，请稍后重试");
+    socket.onclose = () => { if (socketRef.current === socket) fail("匹配连接已中断，请重试"); };
   };
 
   const cancelMatch = () => {
     recordActivity("匹配", "取消匹配");
-    socketRef.current?.send(JSON.stringify({ type: "cancel_match" })); socketRef.current?.close(); setScreen("home");
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: "cancel_match" }));
+    const socket = socketRef.current; socketRef.current = null; socket?.close(1000, "cancelled");
+    setSocketConnected(false); setScreen("home");
+  };
+  const invitationUrl = () => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("room", roomCode); return url.toString();
+  };
+  const copyInvitation = async () => {
+    try { await navigator.clipboard.writeText(`来一局搜打撤！房间码：${roomCode}\n${invitationUrl()}`); setNotice("邀请已复制，发给朋友即可加入"); }
+    catch { setNotice("复制不可用，请长按下方房间码或邀请链接复制"); }
   };
   const toggleWeapon = (weapon: WeaponId) => setWeapons((current) => current.includes(weapon)
     ? current.length === 1 ? current : current.filter((item) => item !== weapon)
@@ -422,7 +520,7 @@ export default function Home() {
   };
   const send = (payload: Record<string, unknown>) => {
     recordActivity("提交", JSON.stringify(payload));
-    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(payload));
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ ...payload, matchId: matchIdRef.current }));
   };
   const confirmStage = () => {
     if (!game) return;
@@ -442,13 +540,19 @@ export default function Home() {
   };
   const leaveGame = () => {
     recordActivity("对局", "离开当前进度并返回主页");
-    socketRef.current?.close(1000, "leave"); sessionStorage.removeItem("multiwar-room");
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "leave_room", matchId: matchIdRef.current }));
+    socketRef.current = null; socket?.close(1000, "leave"); sessionStorage.removeItem("multiwar-room");
+    setSocketConnected(false); setRoomCode(""); setRematch({ cyan: false, red: false }); setRematchPending(false); setPeerLeft(false);
+    matchIdRef.current = undefined; resolvedRoundsRef.current.clear(); setShareCardOpen(false); setDeadlineAt(null);
     setCredential(null); setGame(null); setLocks(EMPTY_LOCKS); setEvents([]); setResolutionAfter(null); resetDraft(); setScreen("home");
   };
 
   const playAgain = () => {
-    recordActivity("对局", matchMode === "solo" ? "再次挑战 AI" : "再次进入在线匹配");
-    match(matchMode);
+    if (matchMode === "solo") { match("solo"); return; }
+    if (!socketConnected || peerLeft) { setNotice("请等待对手重新连接，或返回主页重新邀请"); return; }
+    recordActivity("对局", "请求同房再战"); setRematchPending(true);
+    send({ type: "request_rematch", matchId: matchIdRef.current });
   };
 
   const confirmRestart = () => {
@@ -522,7 +626,7 @@ export default function Home() {
         <div className="eyebrow"><i />搜 · 打 · 撤<i /></div>
         <h1>猜中对手的<br /><em>下一步</em></h1>
         <p>搜走位、打预判、撤地砖。双方同时秘密规划，一局约十分钟。</p>
-        <div className="battle-features"><span><b>37</b>格动态战场</span><span><b>D6</b>骰运博弈</span><span><b>10′</b>快速对局</span></div>
+        <div className="battle-features"><span><b>33</b>格动态战场</span><span><b>D6</b>骰运博弈</span><span><b>10′</b>快速对局</span></div>
       </section>
       <section className="match-card">
         <header className="match-card-head"><div><small>战前整备</small><strong>建立你的作战配置</strong></div><span>READY</span></header>
@@ -546,6 +650,14 @@ export default function Home() {
             </section>;
           })}
         </div>
+        <section className="friend-actions" aria-label="好友约战">
+          <button type="button" className="primary-action" disabled={weapons.length !== 2} onClick={() => match("friend", "create")}>创建好友房间<span>分享房间码 · 和朋友对战</span></button>
+          <form className="join-room-form" onSubmit={(event) => { event.preventDefault(); match("friend", "join"); }}>
+            <label htmlFor="friend-room-code">已有房间码？</label>
+            <div><input id="friend-room-code" aria-label="好友房间码" placeholder="输入 6 位房间码" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={6} value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+            <button type="submit" className="ghost-action" disabled={weapons.length !== 2 || roomCodeInput.length !== 6}>加入房间</button></div>
+          </form>
+        </section>
         <div className="mode-actions">
           <button type="button" className="primary-action" onClick={() => match("pvp")}>在线匹配<span>1V1 · 实时对战</span></button>
           <button type="button" className="solo-action" onClick={() => match("solo")}>单人测试<span>AI · 即时开局</span></button>
@@ -560,8 +672,16 @@ export default function Home() {
     <main className="game-shell matching-screen">
       {commonOverlay}
       <div className="radar"><i /><i /><i /><span>VS</span></div>
-      <div><h1>{credential ? "等待对手进入房间" : "正在寻找对手"}</h1><p>已为你保留武器配置</p></div>
-      <button type="button" className="ghost-action" onClick={credential ? leaveGame : cancelMatch}>取消</button>
+      <div><h1>{matchMode === "friend" ? credential ? "等朋友来，开一局" : "正在连接好友房间" : credential ? "等待对手进入房间" : "正在寻找对手"}</h1><p>{matchMode === "friend" ? "双方进入后自动开局，保留各自的武器配置" : "已为你保留武器配置"}</p></div>
+      {roomCode && <section className="friend-lobby" aria-label="好友房间邀请">
+        <label htmlFor="share-room-code">房间码 · 等待有效期 10 分钟</label>
+        <input id="share-room-code" aria-label="可复制房间码" readOnly value={roomCode} onFocus={(event) => event.target.select()} />
+        <button type="button" className="primary-action" onClick={copyInvitation}>复制邀请给朋友</button>
+        <input className="invitation-link" aria-label="邀请链接" readOnly value={typeof window !== "undefined" ? invitationUrl() : ""} onFocus={(event) => event.target.select()} />
+        <p>朋友打开链接后，选好武器，点击「加入房间」。</p>
+      </section>}
+      <button type="button" className="ghost-action" onClick={credential ? leaveGame : cancelMatch}>{credential ? "离开房间" : "取消"}</button>
+      {notice && <button className="toast" onClick={() => credential ? connectRoom(credential) : setNotice("")}>{notice}</button>}
     </main>
   );
 
@@ -659,11 +779,12 @@ export default function Home() {
         <ResultReview stats={matchStats} />
         <div className="result-weapon"><img src={WEAPON_THUMB_ART[resultWeapon]} alt="" width="320" height="320" decoding="async" /><span><small>主力武器</small><b>{WEAPONS[resultWeapon].name}</b></span><em>使用 {matchStats.weaponUses[resultWeapon]} 次</em></div>
         <div className="final-score"><span>你 {game.players[side].health} HP</span><i>:</i><span>{matchMode === "solo" ? "AI" : "对手"} {game.players[opponentSide].health} HP</span></div>
-        <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>晒出这局</button><button type="button" className="primary-action" onClick={playAgain}>再来一局</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
+        {matchMode !== "solo" && <p className="rematch-status" role="status">{peerLeft ? "对手已离开，请返回主页重新邀请" : rematch[side] ? rematch[opponentSide] ? "双方已同意，等待连接后开始" : "你已同意再战，等待对手确认…" : rematch[opponentSide] ? "对手邀请你再来一局" : "双方同意即可在本房间再战"}</p>}
+        <div className="result-actions"><button type="button" className="result-share-action" onClick={generateShareCard}>晒出这局</button><button type="button" className="primary-action" onClick={playAgain} disabled={matchMode !== "solo" && (rematch[side] || rematchPending || peerLeft || !socketConnected)}>{matchMode === "solo" ? "再来一局" : rematch[side] || rematchPending ? "等待对手" : "同房再战"}</button><button type="button" className="result-secondary" onClick={leaveGame}>返回主页</button></div>
       </aside>}
       {shareCardOpen && <ResultShareSheet status={shareCardStatus} imageUrl={shareCardUrl}
         filename={`soudache-report-round-${game.round}.png`} onRetry={generateShareCard} onClose={() => setShareCardOpen(false)} />}
-      {!opponentConnected && <div className="connection-note">对手暂时离线，房间会为其保留</div>}
+      {!opponentConnected && !peerLeft && <div className="connection-note">对手暂时离线，房间会为其保留</div>}
       {notice && <button className="toast" onClick={() => credential && connectRoom(credential)}>{notice}</button>}
     </main>
   );

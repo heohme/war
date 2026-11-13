@@ -84,6 +84,37 @@ interface StoredRoom {
     events: ResolutionEvent[];
   };
   botSide?: Side;
+  mode?: "pvp" | "solo" | "friend";
+  roomCode?: string;
+  expiresAt?: number;
+  matchId?: string;
+  initialInitiative?: Side;
+  rematch?: Record<Side, boolean>;
+  peerLeft?: boolean;
+}
+
+interface FriendInvite { roomId: string; expiresAt: number }
+const FRIEND_WAIT_MS = 10 * 60 * 1_000;
+const FRIEND_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+function friendCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, (value) => FRIEND_CODE_ALPHABET[value % FRIEND_CODE_ALPHABET.length]).join("");
+}
+
+function emptyLocks(): StoredRoom["locks"] {
+  return { cyan: { remove: false, move: false, attack: false }, red: { remove: false, move: false, attack: false } };
+}
+
+function publicPlayer(player: QueuePlayer): QueuePlayer {
+  return { id: player.id, name: player.name, weapons: [...player.weapons] };
+}
+
+function publicGame(game: GameState): GameState {
+  return { ...game, players: {
+    cyan: { ...publicPlayer(game.players.cyan), side: "cyan", health: game.players.cyan.health, position: game.players.cyan.position },
+    red: { ...publicPlayer(game.players.red), side: "red", health: game.players.red.health, position: game.players.red.position },
+  } };
 }
 
 interface StoredFeedback extends FeedbackPayload {
@@ -151,7 +182,7 @@ export default {
       const stub = env.MATCH_QUEUE.get(env.MATCH_QUEUE.idFromName("global-v1"));
       return withFeedbackCors(request, await stub.fetch(request));
     }
-    if (url.pathname === "/ws/match") {
+    if (url.pathname === "/ws/match" || url.pathname === "/ws/friend") {
       const stub = env.MATCH_QUEUE.get(env.MATCH_QUEUE.idFromName("global-v1"));
       return stub.fetch(request);
     }
@@ -165,12 +196,19 @@ export default {
 };
 
 export class MatchQueue {
+  private pending: Promise<unknown> = Promise.resolve();
   constructor(
     private readonly state: DurableObjectState,
     private readonly env: Env,
   ) {}
 
-  async fetch(request: Request): Promise<Response> {
+  fetch(request: Request): Promise<Response> {
+    const operation = this.pending.then(() => this.fetchRequest(request));
+    this.pending = operation.catch(() => undefined);
+    return operation;
+  }
+
+  private async fetchRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/api/feedback" && request.method === "POST") {
       const length = Number(request.headers.get("content-length") || 0);
@@ -194,6 +232,7 @@ export class MatchQueue {
       name: (url.searchParams.get("name") || "旅行者").slice(0, 20),
       weapons: parseWeapons(url.searchParams.get("weapons")),
     };
+    if (url.pathname === "/ws/friend") return this.friendRequest(url, player);
     const solo = url.searchParams.get("mode") === "solo";
     for (const existing of this.state.getWebSockets(player.id)) {
       existing.close(4001, "replaced");
@@ -222,6 +261,57 @@ export class MatchQueue {
       }
     }
     return wsResponse(client);
+  }
+
+  private async friendRequest(url: URL, player: QueuePlayer): Promise<Response> {
+    const pair = new WebSocketPair();
+    const server = pair[1] as WebSocketWithAttachment;
+    this.state.acceptWebSocket(server, [player.id]);
+    server.serializeAttachment({ kind: "matched", player } satisfies QueueAttachment);
+    const fail = (code: string) => {
+      server.send(JSON.stringify({ type: "error", code }));
+      server.close(1000, code);
+      return wsResponse(pair[0]);
+    };
+    const action = url.searchParams.get("action");
+    let code = (url.searchParams.get("code") || "").trim().toUpperCase();
+    let roomId: string;
+    let token: string;
+    let side: Side;
+    if (action === "create") {
+      // Serial allocation prevents two requests from claiming the same code.
+      const current = await this.state.storage.list<FriendInvite>({ prefix: "friend:" });
+      const expired = [...current].filter(([, invite]) => invite.expiresAt <= Date.now()).map(([key]) => key);
+      if (expired.length) await this.state.storage.delete(expired);
+      do { code = friendCode(); } while (current.has(`friend:${code}`) && current.get(`friend:${code}`)!.expiresAt > Date.now());
+      roomId = crypto.randomUUID();
+      token = randomToken();
+      side = "cyan";
+      const expiresAt = Date.now() + FRIEND_WAIT_MS;
+      const response = await this.env.GAME_ROOM.get(this.env.GAME_ROOM.idFromName(roomId)).fetch(new Request("https://room.internal/init", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ roomId, mode: "friend", roomCode: code, expiresAt, players: {
+          cyan: { ...player, side: "cyan", token },
+          red: { id: "", name: "等待好友", weapons: ["sword", "bow"], side: "red", token: randomToken() },
+        } }),
+      }));
+      if (!response.ok) return fail("room_create_failed");
+      await this.state.storage.put(`friend:${code}`, { roomId, expiresAt } satisfies FriendInvite);
+    } else if (action === "join") {
+      if (!/^[23456789A-HJ-NP-Z]{6}$/.test(code)) return fail("invalid_room_code");
+      const invite = await this.state.storage.get<FriendInvite>(`friend:${code}`);
+      if (!invite || invite.expiresAt <= Date.now()) return fail("room_expired");
+      roomId = invite.roomId;
+      const response = await this.env.GAME_ROOM.get(this.env.GAME_ROOM.idFromName(roomId)).fetch(new Request("https://room.internal/join-friend", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ player }),
+      }));
+      const result = await response.json() as { error?: string; token?: string };
+      if (!response.ok || !result.token) return fail(result.error || "room_join_failed");
+      token = result.token;
+      side = "red";
+    } else return fail("invalid_friend_action");
+    server.send(JSON.stringify({ type: "match_found", roomId, side, token, roomCode: code, mode: "friend" }));
+    return wsResponse(pair[0]);
   }
 
   private async createSoloRoom(player: QueuePlayer, socket: WebSocket): Promise<void> {
@@ -319,9 +409,20 @@ export class MatchQueue {
 }
 
 export class GameRoom {
+  private pending: Promise<unknown> = Promise.resolve();
   constructor(private readonly state: DurableObjectState) {}
 
-  async fetch(request: Request): Promise<Response> {
+  private exclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.pending.then(operation);
+    this.pending = result.catch(() => undefined);
+    return result;
+  }
+
+  fetch(request: Request): Promise<Response> {
+    return this.exclusive(() => this.fetchRequest(request));
+  }
+
+  private async fetchRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/init" && request.method === "POST") {
       const existing = await this.state.storage.get<StoredRoom>("room");
@@ -330,24 +431,46 @@ export class GameRoom {
         roomId: string;
         players: Record<Side, RoomPlayer>;
         botSide?: Side;
+        mode?: StoredRoom["mode"];
+        roomCode?: string;
+        expiresAt?: number;
       };
       const initiative: Side = crypto.getRandomValues(new Uint8Array(1))[0] % 2 ? "cyan" : "red";
       const room: StoredRoom = {
         id: body.roomId,
         status: "waiting",
         players: body.players,
-        game: createGame(body.players.cyan, body.players.red, initiative),
+        game: createGame(publicPlayer(body.players.cyan), publicPlayer(body.players.red), initiative),
         plans: {},
-        locks: {
-          cyan: { remove: false, move: false, attack: false },
-          red: { remove: false, move: false, attack: false },
-        },
+        locks: emptyLocks(),
         deadlineAt: null,
         nextRoundAt: null,
         botSide: body.botSide,
+        mode: body.mode || (body.botSide ? "solo" : "pvp"),
+        roomCode: body.roomCode,
+        expiresAt: body.expiresAt,
+        matchId: crypto.randomUUID(),
+        initialInitiative: initiative,
+        rematch: { cyan: false, red: false },
       };
       await this.state.storage.put("room", room);
+      if (room.expiresAt) await this.state.storage.setAlarm(room.expiresAt);
       return json({ ok: true });
+    }
+
+    if (url.pathname === "/join-friend" && request.method === "POST") {
+      const room = await this.state.storage.get<StoredRoom>("room");
+      if (!room || room.mode !== "friend" || room.peerLeft || (room.expiresAt && room.expiresAt <= Date.now())) {
+        return json({ error: "room_expired" }, { status: 410 });
+      }
+      const { player } = await request.json() as { player: QueuePlayer };
+      if (room.players.cyan.id === player.id) return json({ error: "cannot_join_self" }, { status: 409 });
+      if (room.status !== "waiting" || room.players.red.id) return json({ error: "room_full" }, { status: 409 });
+      room.players.red = { ...player, side: "red", token: randomToken() };
+      room.game = createGame(publicPlayer(room.players.cyan), publicPlayer(room.players.red), room.initialInitiative);
+      await this.state.storage.put("room", room);
+      this.broadcast(room, { type: "room_updated", game: room.game, ...this.roomMetadata(room) });
+      return json({ ok: true, token: room.players.red.token });
     }
 
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
@@ -355,6 +478,11 @@ export class GameRoom {
     }
     const room = await this.state.storage.get<StoredRoom>("room");
     if (!room) return json({ error: "room_not_found" }, { status: 404 });
+    if (!room.matchId) {
+      room.matchId = crypto.randomUUID();
+      room.initialInitiative = room.game.initiative;
+      await this.state.storage.put("room", room);
+    }
     const playerId = url.searchParams.get("playerId") ?? "";
     const token = url.searchParams.get("token") ?? "";
     const side = (Object.keys(room.players) as Side[]).find(
@@ -370,18 +498,29 @@ export class GameRoom {
     const server = pair[1] as WebSocketWithAttachment;
     this.state.acceptWebSocket(server, [playerId, side]);
     server.serializeAttachment({ kind: "room", playerId, side });
+    if (room.status === "waiting" && room.mode === "friend" && (room.peerLeft || (room.expiresAt && room.expiresAt <= Date.now()))) {
+      server.send(JSON.stringify({ type: "error", code: "room_expired" }));
+      server.close(1000, "room_expired");
+      return wsResponse(client);
+    }
     server.send(JSON.stringify(this.snapshot(room, side)));
     if (room.status === "waiting" && this.bothConnected(room, side)) {
       const currentVisible = this.state.getWebSockets(playerId).length > 0;
       const roundStarted = await this.startPlanning(room);
       if (!currentVisible) server.send(JSON.stringify(roundStarted));
+    } else if (room.status === "finished" && room.rematch?.cyan && room.rematch?.red && !room.peerLeft && this.bothConnected(room, side)) {
+      await this.startRematch(room);
     } else {
       this.broadcast(room, { type: "connection", side, connected: true });
     }
     return wsResponse(client);
   }
 
-  async webSocketMessage(
+  webSocketMessage(socket: WebSocketWithAttachment, message: string | ArrayBuffer): Promise<void> {
+    return this.exclusive(() => this.receiveMessage(socket, message));
+  }
+
+  private async receiveMessage(
     socket: WebSocketWithAttachment,
     message: string | ArrayBuffer,
   ): Promise<void> {
@@ -402,12 +541,43 @@ export class GameRoom {
       return;
     }
     const room = await this.state.storage.get<StoredRoom>("room");
-    if (!room || room.status !== "planning" || room.game.winner) return;
+    if (!room) return;
+    // Replaced connections may still deliver a buffered message.
+    if (socket.readyState !== 1 || !this.state.getWebSockets(attachment.playerId).includes(socket)) return;
+    const side = attachment.side;
+    if (data.matchId !== undefined && data.matchId !== room.matchId) {
+      socket.send(JSON.stringify({ type: "error", code: "stale_match" }));
+      return;
+    }
+    if (data.type === "leave_room") {
+      room.peerLeft = true;
+      room.rematch = { cyan: false, red: false };
+      if (room.status === "waiting") await this.state.storage.deleteAlarm();
+      await this.state.storage.put("room", room);
+      this.broadcast(room, { type: "peer_left", side, matchId: room.matchId });
+      socket.close(1000, "left_room");
+      return;
+    }
+    if (data.type === "request_rematch") {
+      if (!room.matchId || data.matchId !== room.matchId) {
+        socket.send(JSON.stringify({ type: "error", code: "stale_match" }));
+        return;
+      }
+      if (room.status !== "finished" || room.botSide || room.peerLeft) {
+        socket.send(JSON.stringify({ type: "error", code: room.peerLeft ? "peer_left" : "rematch_unavailable" }));
+        return;
+      }
+      room.rematch = { cyan: false, red: false, ...room.rematch, [side]: true };
+      await this.state.storage.put("room", room);
+      if (room.rematch.cyan && room.rematch.red && this.bothConnected(room)) await this.startRematch(room);
+      else this.broadcast(room, { type: "rematch_state", ...this.roomMetadata(room) });
+      return;
+    }
+    if (room.status !== "planning" || room.game.winner) return;
     if (data.round !== room.game.round) {
       socket.send(JSON.stringify({ type: "error", code: "stale_round" }));
       return;
     }
-    const side = attachment.side;
     const partial = room.plans[side] ?? {};
     if (data.type === "lock_remove" && !room.locks[side].remove) {
       const cell = typeof data.cell === "string" ? data.cell : undefined;
@@ -437,6 +607,7 @@ export class GameRoom {
       if (
         !weapon ||
         !room.players[side].weapons.includes(weapon) ||
+        !Number.isInteger(direction) ||
         direction < 1 ||
         direction > 6
       ) {
@@ -454,18 +625,35 @@ export class GameRoom {
     if (room.locks.cyan.attack && room.locks.red.attack) await this.resolve(room);
   }
 
-  async webSocketClose(socket: WebSocketWithAttachment): Promise<void> {
+  webSocketClose(socket: WebSocketWithAttachment): Promise<void> {
+    return this.exclusive(() => this.socketClosed(socket));
+  }
+
+  private async socketClosed(socket: WebSocketWithAttachment): Promise<void> {
     const attachment = socket.deserializeAttachment() as { side?: Side } | undefined;
     const room = await this.state.storage.get<StoredRoom>("room");
     if (room && attachment?.side) {
-      this.broadcast(room, { type: "connection", side: attachment.side, connected: false });
+      const connected = this.connected(room);
+      this.broadcast(room, { type: "connection", side: attachment.side, connected: connected[attachment.side] });
+      if (room.status === "finished") this.broadcast(room, { type: "rematch_state", ...this.roomMetadata(room) });
     }
   }
 
-  async alarm(): Promise<void> {
+  alarm(): Promise<void> {
+    return this.exclusive(() => this.handleAlarm());
+  }
+
+  private async handleAlarm(): Promise<void> {
     const room = await this.state.storage.get<StoredRoom>("room");
     if (!room || room.status === "finished") return;
     const now = Date.now();
+    if (room.status === "waiting" && room.expiresAt && now >= room.expiresAt) {
+      room.peerLeft = true;
+      await this.state.storage.put("room", room);
+      this.broadcast(room, { type: "error", code: "room_expired" });
+      await this.state.storage.deleteAlarm();
+      return;
+    }
     if (room.status === "planning" && room.deadlineAt && now >= room.deadlineAt) {
       await this.resolve(room);
       return;
@@ -474,23 +662,49 @@ export class GameRoom {
       await this.startPlanning(room);
       return;
     }
-    const next = room.status === "planning" ? room.deadlineAt : room.nextRoundAt;
+    const next = room.status === "waiting" ? room.expiresAt : room.status === "planning" ? room.deadlineAt : room.nextRoundAt;
     if (next) await this.state.storage.setAlarm(next);
   }
 
   private bothConnected(room: StoredRoom, joiningSide?: Side): boolean {
     return (Object.keys(room.players) as Side[]).every((side) =>
-      side === room.botSide || side === joiningSide || this.state.getWebSockets(room.players[side].id).length > 0,
+      Boolean(room.players[side].id) && (side === room.botSide || side === joiningSide || this.connected(room)[side]),
     );
+  }
+
+  private connected(room: StoredRoom): Record<Side, boolean> {
+    return {
+      cyan: this.state.getWebSockets(room.players.cyan.id).some((socket) => socket.readyState === 1),
+      red: room.botSide === "red" || (Boolean(room.players.red.id) && this.state.getWebSockets(room.players.red.id).some((socket) => socket.readyState === 1)),
+    };
+  }
+
+  private roomMetadata(room: StoredRoom): Record<string, unknown> {
+    return {
+      roomCode: room.roomCode,
+      mode: room.mode || (room.botSide ? "solo" : "pvp"),
+      matchId: room.matchId,
+      rematch: room.rematch || { cyan: false, red: false },
+      connected: this.connected(room),
+      peerLeft: Boolean(room.peerLeft),
+      expiresAt: room.status === "waiting" ? room.expiresAt : undefined,
+    };
+  }
+
+  private async startRematch(room: StoredRoom): Promise<void> {
+    room.initialInitiative = room.initialInitiative === "cyan" ? "red" : "cyan";
+    room.matchId = crypto.randomUUID();
+    room.game = createGame(publicPlayer(room.players.cyan), publicPlayer(room.players.red), room.initialInitiative);
+    room.latest = undefined;
+    room.rematch = { cyan: false, red: false };
+    await this.startPlanning(room);
   }
 
   private async startPlanning(room: StoredRoom): Promise<Record<string, unknown>> {
     room.status = "planning";
+    room.game = publicGame(room.game);
     room.plans = {};
-    room.locks = {
-      cyan: { remove: false, move: false, attack: false },
-      red: { remove: false, move: false, attack: false },
-    };
+    room.locks = emptyLocks();
     if (room.botSide) {
       room.plans[room.botSide] = planBotTurn(room.game, room.botSide);
       room.locks[room.botSide] = { remove: true, move: true, attack: true };
@@ -504,6 +718,7 @@ export class GameRoom {
       game: room.game,
       deadlineAt: room.deadlineAt,
       locks: room.locks,
+      ...this.roomMetadata(room),
     };
     this.broadcast(room, payload);
     return payload;
@@ -518,7 +733,7 @@ export class GameRoom {
 
   private async resolve(room: StoredRoom): Promise<void> {
     if (room.status !== "planning") return;
-    const before = room.game;
+    const before = publicGame(room.game);
     const result = resolveRound(before, this.completePlans(room), () => {
       const value = crypto.getRandomValues(new Uint32Array(1))[0];
       return (value % 6) + 1;
@@ -543,6 +758,7 @@ export class GameRoom {
       events: result.events,
       nextRoundAt: room.nextRoundAt,
       winner: result.state.winner,
+      ...this.roomMetadata(room),
     });
   }
 
@@ -552,10 +768,14 @@ export class GameRoom {
       roomId: room.id,
       side,
       status: room.status,
-      game: room.game,
+      game: publicGame(room.game),
       locks: room.locks,
       deadlineAt: room.deadlineAt,
-      latest: room.status === "resolving" ? room.latest : undefined,
+      selfPlan: room.plans[side] || {},
+      latest: room.status === "resolving" && room.latest ? {
+        ...room.latest, before: publicGame(room.latest.before), after: publicGame(room.latest.after),
+      } : undefined,
+      ...this.roomMetadata(room),
     };
   }
 
