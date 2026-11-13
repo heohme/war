@@ -773,3 +773,32 @@ button,input,textarea { font:inherit; } button { color:inherit; }
 .result-review dd b { display:block; color:var(--gold); font-size:.68rem; }
 .result-review dd small { display:block; margin-top:.15rem; color:#a4afb8; font-size:.57rem; line-height:1.5; }
 .result-review p { margin:.3rem 0 0; color:#cbd3d9; font-size:.59rem; line-height:1.5; }
+
+/* Friend invitations use the same loadout and battle surface as public matches. */
+.friend-actions { margin-top:.7rem; padding-top:.65rem; border-top:1px solid var(--line); }
+.friend-actions>.primary-action { width:100%; margin-top:0; }
+.join-room-form { margin-top:.55rem; text-align:left; }
+.join-room-form>label { display:block; margin-bottom:.25rem; color:var(--muted); font-size:.62rem; }
+.join-room-form>div { display:flex; gap:.45rem; }
+.join-room-form input { flex:1; min-width:0; border:1px solid var(--line-strong); background:rgba(0,0,0,.28); border-radius:.2rem; padding:.55rem .7rem; color:var(--ink); font:inherit; font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; }
+.join-room-form .ghost-action { width:auto; margin:0; white-space:nowrap; padding:.5rem .75rem; font-size:.7rem; }
+.friend-actions button:disabled,.join-room-form button:disabled,.result-actions button:disabled { opacity:.5; cursor:not-allowed; }
+.friend-lobby { display:grid; gap:.7rem; width:min(28rem,calc(100vw - 2rem)); padding:1.2rem; border:1px solid var(--line-strong); border-radius:.4rem; background:rgba(10,17,23,.92); }
+.friend-lobby>label { color:var(--muted); font-size:.7rem; }
+.friend-lobby>input { width:100%; min-width:0; text-align:center; background:transparent; border:0; color:var(--gold); font:inherit; font-size:2.5rem; font-weight:650; letter-spacing:.24em; padding:.25rem; }
+.friend-lobby .primary-action { margin:0; }
+.friend-lobby>input.invitation-link { padding:.5rem; border:1px solid var(--line); color:var(--muted); font-size:.65rem; letter-spacing:0; font-weight:400; }
+.friend-lobby>p { margin:0; line-height:1.5; font-size:.65rem; }
+.matching-screen { overflow-y:auto; padding-block:4rem 2rem; }
+.matching-screen:has(.friend-lobby) { gap:.7rem; }
+.matching-screen:has(.friend-lobby) .radar { display:none; }
+.matching-screen .toast { bottom:1rem; }
+.rematch-status { margin:.4rem 0; padding:.55rem; border:1px solid var(--line); color:var(--muted); font-size:.65rem; line-height:1.5; }
+@media (orientation:landscape) and (max-height:650px) {
+  .home-screen { overflow-y:auto; align-items:start; }
+  .home-copy { align-self:center; }
+  .friend-actions { padding-top:.4rem; margin-top:.4rem; }
+  .join-room-form input { padding:.35rem .5rem; }
+  .friend-lobby { gap:.45rem; padding:.75rem; }
+  .friend-lobby>input { font-size:1.9rem; }
+}

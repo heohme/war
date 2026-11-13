@@ -13,7 +13,7 @@ export const onRequest = async ({ request, env }: PagesContext): Promise<Respons
   const url = new URL(request.url);
   const origin = request.headers.get("origin");
   if (origin && origin !== "https://multiwar.pages.dev") return new Response("Forbidden", { status: 403 });
-  if (url.pathname === "/ws/match") {
+  if (url.pathname === "/ws/match" || url.pathname === "/ws/friend") {
     return env.MATCH_QUEUE.get(env.MATCH_QUEUE.idFromName("global-v1")).fetch(request);
   }
   const room = url.pathname.match(/^\/ws\/room\/([a-zA-Z0-9-]+)$/);
