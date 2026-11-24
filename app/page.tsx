@@ -15,10 +15,11 @@ import {
   type MatchStats,
 } from "../lib/match-summary";
 import { createResultCard } from "../lib/result-card";
+import { CampaignGame } from "../components/CampaignGame";
 import { ResultReview } from "../components/ResultReview";
 import { ResultShareSheet, type ResultShareStatus } from "../components/ResultShareSheet";
 
-type Screen = "home" | "matching" | "planning" | "resolving" | "finished";
+type Screen = "home" | "campaign" | "matching" | "planning" | "resolving" | "finished";
 type Locks = Record<Side, { remove: boolean; move: boolean; attack: boolean }>;
 type MatchMode = "pvp" | "solo" | "friend";
 type RoomCredential = { roomId: string; side: Side; token: string; playerId: string; mode?: MatchMode; roomCode?: string; matchId?: string };
@@ -271,6 +272,7 @@ export default function Home() {
   const [feedbackLogs, setFeedbackLogs] = useState<ActivityLogEntry[]>([]);
   const [restartOpen, setRestartOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [guideStep, setGuideStep] = useState(0);
   const [matchMode, setMatchMode] = useState<MatchMode>("pvp");
   const [roomCodeInput, setRoomCodeInput] = useState("");
@@ -401,7 +403,7 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
     if (localStorage.getItem("multiwar-guide-v2") || sessionStorage.getItem("multiwar-room")) return;
-    const guideTimer = setTimeout(() => setGuideOpen(true), 0);
+    const guideTimer = setTimeout(() => setShowGuidePrompt(true), 0);
     return () => clearTimeout(guideTimer);
   }, []);
 
@@ -579,6 +581,7 @@ export default function Home() {
   const closeGuide = () => {
     localStorage.setItem("multiwar-guide-v2", "complete");
     setGuideOpen(false);
+    setShowGuidePrompt(false);
   };
 
   const submitFeedback = async () => {
@@ -617,6 +620,8 @@ export default function Home() {
     {restartOpen && <RestartSheet active={screen !== "home"} onConfirm={confirmRestart} onClose={() => setRestartOpen(false)} />}
   </>;
 
+  if (screen === "campaign") return <CampaignGame onExit={() => setScreen("home")} />;
+
   if (screen === "home") return (
     <main className="game-shell home-screen">
       {commonOverlay}
@@ -627,6 +632,8 @@ export default function Home() {
         <h1>猜中对手的<br /><em>下一步</em></h1>
         <p>搜走位、打预判、撤地砖。双方同时秘密规划，一局约十分钟。</p>
         <div className="battle-features"><span><b>33</b>格动态战场</span><span><b>D6</b>骰运博弈</span><span><b>10′</b>快速对局</span></div>
+        <button type="button" className="campaign-entry" onClick={() => setScreen("campaign")}>单人战役 <strong>三英战吕布</strong><span aria-hidden="true"> →</span></button>
+        {showGuidePrompt && <button type="button" className="home-guide-link" onClick={openGuide}>查看对战玩法</button>}
       </section>
       <section className="match-card">
         <header className="match-card-head"><div><small>战前整备</small><strong>建立你的作战配置</strong></div><span>READY</span></header>

@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./compat.css";
 import "../app/globals.css";
+import "../app/campaign.css";
 import App from "./App";
 
 function updateAppHeight() {
