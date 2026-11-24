@@ -521,7 +521,7 @@ function axialToOffset(coord: Coord): Coord {
   return { q: coord.q + (coord.r - rowParity(coord.r)) / 2, r: coord.r };
 }
 
-function directionCell(origin: string, direction: number, distance = 1): string {
+export function directionCell(origin: string, direction: number, distance = 1): string {
   const start = offsetToAxial(parseCell(origin));
   const delta = DIRECTIONS[direction - 1];
   return cellId(axialToOffset({
